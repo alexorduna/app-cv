@@ -1,0 +1,30 @@
+# dependencias y build
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Datos personales: NUNCA subir
+.env
+.env.*
+!.env.example
+data/*
+!data/import/
+data/import/*
+!data/import/.gitkeep
+!data/ejemplo/
+data/ejemplo/*
+!data/ejemplo/*.csv
+!data/ejemplo/LEEME.md
+data/export/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+
+# varios
+.DS_Store
+npm-debug.log*
+coverage/
