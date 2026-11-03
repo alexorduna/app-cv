@@ -125,6 +125,11 @@ export function importarSeguimiento(db: DB, textoCsv: string, archivo = "seguimi
       if (idExterno) existente = tx.select().from(vacantes).where(eq(vacantes.idExterno, idExterno)).get();
       if (!existente) existente = tx.select().from(vacantes).where(eq(vacantes.huella, datos.huella)).get();
 
+      // Lo que viene descartado del Sheet lo descartó Alex: va al historial.
+      if (datos.estado === "Descartada") {
+        datos.descartadaPor = "alex";
+        datos.fechaDescarte = datos.fechaAplicacion ?? datos.fechaEncontrada;
+      }
       if (!existente) {
         const res = tx.insert(vacantes).values(datos).returning({ id: vacantes.id }).get();
         registrar(tx as unknown as DB, "vacante", res.id, "importada", archivo);
@@ -136,6 +141,10 @@ export function importarSeguimiento(db: DB, textoCsv: string, archivo = "seguimi
         const nuevo = datos[k] ?? null;
         const viejo = (existente as Record<string, unknown>)[k] ?? null;
         if (String(nuevo ?? "") !== String(viejo ?? "")) (cambios as Record<string, unknown>)[k] = nuevo;
+      }
+      if (cambios.estado !== undefined) {
+        cambios.descartadaPor = datos.estado === "Descartada" ? "alex" : "";
+        cambios.fechaDescarte = datos.estado === "Descartada" ? hoyISO() : null;
       }
       if (datos.huella !== existente.huella) {
         const choque = tx.select({ id: vacantes.id }).from(vacantes).where(eq(vacantes.huella, datos.huella)).get();

@@ -48,6 +48,9 @@ export const vacantes = sqliteTable(
     versionCv: text("version_cv").notNull().default(""),
     notas: text("notas").notNull().default(""),
     motivoDescarte: text("motivo_descarte").notNull().default(""),
+    // Quién la descartó: "alex" (a mano, queda en el historial) o "filtros" (automático). Vacío si no está descartada.
+    descartadaPor: text("descartada_por").$type<"" | "alex" | "filtros">().notNull().default(""),
+    fechaDescarte: text("fecha_descarte"),
     huella: text("huella").notNull(),
     // 1 = está en el tablero (importada, capturada a mano o aceptada desde "Nuevas").
     // 0 = bandeja "Nuevas" (Por revisar) o descartada por filtros/lote sin pasar por el tablero.

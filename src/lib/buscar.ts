@@ -17,17 +17,19 @@ export interface ResultadoFuente {
   nuevas: number;
   descartadas: number;
   duplicadas: number;
+  omitidas: number;
 }
 
 /** Ingresa candidatas (de una fuente, una alerta o captura manual) en una sola transacción. */
 export function ingresarLote(db: DB, candidatas: CandidataFuente[], plataforma: string, cfg: ConfigFiltros) {
-  const conteo = { nuevas: 0, descartadas: 0, duplicadas: 0 };
+  const conteo = { nuevas: 0, descartadas: 0, duplicadas: 0, omitidas: 0 };
   db.transaction((tx) => {
     for (const c of candidatas) {
       if (!c.puesto?.trim()) continue;
       const r = ingresarCandidata(tx as unknown as DB, c, c.plataforma ?? plataforma, cfg);
       if (r.estado === "nueva") conteo.nuevas++;
       else if (r.estado === "descartada") conteo.descartadas++;
+      else if (r.estado === "omitida") conteo.omitidas++;
       else conteo.duplicadas++;
     }
   });
@@ -51,7 +53,7 @@ export async function buscarVacantes(db: DB, opciones: { http?: ClienteHttp; sol
 
 async function ejecutarFuente(db: DB, fuente: Fuente, http: ClienteHttp, valores: Record<string, string>, cfg: ConfigFiltros): Promise<ResultadoFuente> {
   const avisos: string[] = [];
-  const res: ResultadoFuente = { fuente: fuente.id, nombre: fuente.nombre, ok: true, mensaje: "", encontradas: 0, nuevas: 0, descartadas: 0, duplicadas: 0 };
+  const res: ResultadoFuente = { fuente: fuente.id, nombre: fuente.nombre, ok: true, mensaje: "", encontradas: 0, nuevas: 0, descartadas: 0, duplicadas: 0, omitidas: 0 };
   try {
     const candidatas = await fuente.buscar({ http, filtros: valores, db, avisar: (m) => avisos.push(m) });
     res.encontradas = candidatas.length;

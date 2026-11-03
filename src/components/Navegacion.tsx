@@ -7,6 +7,7 @@ const ENLACES = [
   { href: "/aplicar", texto: "Aplicar asistido" },
   { href: "/cartas", texto: "Cartas" },
   { href: "/buscar", texto: "Buscar vacantes" },
+  { href: "/historial", texto: "Historial de descartes" },
   { href: "/banco", texto: "Banco de respuestas" },
   { href: "/configuracion", texto: "Configuración" },
 ];

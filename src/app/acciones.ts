@@ -19,7 +19,7 @@ import { esPreguntaSalarial } from "@/lib/importacion";
 import { ahoraISO, hoyISO } from "@/lib/texto";
 import { registrar } from "@/lib/actividad";
 import {
-  aceptarNuevas, actualizarCampos, cambiarEstado, descartarVarias, ingresarCandidata, rescatarDescartada,
+  aceptarNuevas, actualizarCampos, cambiarEstado, descartarVarias, ingresarCandidata, rescatarDescartada, restaurarDescartada,
 } from "@/lib/vacantes";
 
 function refrescar() {
@@ -67,6 +67,11 @@ export async function descartarNuevasAccion(ids: number[], motivo: string) {
 
 export async function rescatarAccion(id: number) {
   rescatarDescartada(getDb(), id);
+  refrescar();
+}
+
+export async function restaurarAccion(id: number) {
+  restaurarDescartada(getDb(), id);
   refrescar();
 }
 

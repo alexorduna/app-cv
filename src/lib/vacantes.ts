@@ -7,7 +7,7 @@ import { ahoraISO, hoyISO } from "./texto";
 import { evaluar, type Candidata, type ConfigFiltros, type Evaluacion } from "./filtros/motor";
 
 export interface ResultadoIngreso {
-  estado: "nueva" | "descartada" | "duplicada";
+  estado: "nueva" | "descartada" | "duplicada" | "omitida";
   id?: number;
   /** Solo se calcula para vacantes nuevas (las duplicadas no se vuelven a evaluar). */
   evaluacion?: Evaluacion;
@@ -19,6 +19,8 @@ export interface ResultadoIngreso {
  * En ambos casos queda fuera del tablero (en_tablero = 0) hasta que Alex la acepte.
  */
 export function ingresarCandidata(db: DB, c: Candidata, plataforma: string, cfg: ConfigFiltros): ResultadoIngreso {
+  // Las vacantes cerradas (🔒) no sirven de nada: no se guardan.
+  if (c.marcas?.cerrada) return { estado: "omitida" };
   const huella = calcularHuella(c.enlace ?? "", c.empresa, c.puesto);
   const existente = db.select({ id: vacantes.id }).from(vacantes).where(eq(vacantes.huella, huella)).get();
   if (existente) return { estado: "duplicada", id: existente.id };
@@ -39,6 +41,8 @@ export function ingresarCandidata(db: DB, c: Candidata, plataforma: string, cfg:
     prioridad: ev.prioridad,
     estado: ev.pasa ? "Por revisar" : "Descartada",
     motivoDescarte: ev.motivo,
+    descartadaPor: ev.pasa ? "" : "filtros",
+    fechaDescarte: ev.pasa ? null : hoyISO(),
     notas: ev.avisos.join("\n"),
     ubicacion: c.ubicacion ?? "",
     huella,
@@ -64,7 +68,15 @@ export function cambiarEstado(db: DB, id: number, estado: Estado, extra: { motiv
   // Cambiar el estado de una "Nueva" a algo distinto de Descartada la sube al tablero.
   if (estado !== "Descartada" && estado !== "Por revisar") cambios.enTablero = 1;
   if (estado === "Aplicada" && !antes.fechaAplicacion) cambios.fechaAplicacion = extra.fecha ?? hoyISO();
-  if (estado === "Descartada") cambios.motivoDescarte = extra.motivo ?? antes.motivoDescarte ?? "";
+  if (estado === "Descartada") {
+    // Descarte hecho por Alex: queda en el historial.
+    cambios.motivoDescarte = extra.motivo ?? antes.motivoDescarte ?? "";
+    cambios.descartadaPor = "alex";
+    cambios.fechaDescarte = hoyISO();
+  } else if (antes.estado === "Descartada") {
+    cambios.descartadaPor = "";
+    cambios.fechaDescarte = null;
+  }
   db.update(vacantes).set(cambios).where(eq(vacantes.id, id)).run();
   registrar(db, "vacante", id, "estado", `${antes.estado} → ${estado}${extra.motivo ? ` (${extra.motivo})` : ""}`);
 }
@@ -101,12 +113,12 @@ export function listarNuevas(db: DB) {
     .all();
 }
 
-/** Descartadas sin pasar por el tablero (por filtros o en lote desde Nuevas), para revisarlas. */
+/** Descartadas automáticamente por los filtros, para revisarlas. */
 export function listarDescartadasAuto(db: DB, limite = 200) {
   return db
     .select()
     .from(vacantes)
-    .where(and(eq(vacantes.enTablero, 0), eq(vacantes.estado, "Descartada")))
+    .where(and(eq(vacantes.estado, "Descartada"), eq(vacantes.descartadaPor, "filtros")))
     .orderBy(desc(vacantes.id))
     .limit(limite)
     .all();
@@ -166,8 +178,27 @@ export function calcularResumen(lista: Pick<Vacante, "estado" | "fechaAplicacion
 /** Devuelve una descartada automática a la bandeja Nuevas (por si el filtro se equivocó). */
 export function rescatarDescartada(db: DB, id: number) {
   db.update(vacantes)
-    .set({ estado: "Por revisar", motivoDescarte: "", enTablero: 0, actualizada: ahoraISO() })
+    .set({ estado: "Por revisar", motivoDescarte: "", descartadaPor: "", fechaDescarte: null, enTablero: 0, actualizada: ahoraISO() })
     .where(eq(vacantes.id, id))
     .run();
   registrar(db, "vacante", id, "rescatada", "Descartada → Nuevas");
+}
+
+/** Historial: lo que Alex descartó a mano (tablero, detalle o bandeja Nuevas). Nunca se borra solo. */
+export function listarHistorialDescartes(db: DB) {
+  return db
+    .select()
+    .from(vacantes)
+    .where(and(eq(vacantes.estado, "Descartada"), eq(vacantes.descartadaPor, "alex")))
+    .orderBy(desc(vacantes.fechaDescarte), desc(vacantes.id))
+    .all();
+}
+
+/** Saca una vacante del historial y la regresa al tablero como "Por revisar". */
+export function restaurarDescartada(db: DB, id: number) {
+  db.update(vacantes)
+    .set({ estado: "Por revisar", motivoDescarte: "", descartadaPor: "", fechaDescarte: null, enTablero: 1, actualizada: ahoraISO() })
+    .where(eq(vacantes.id, id))
+    .run();
+  registrar(db, "vacante", id, "restaurada", "Historial → Tablero");
 }

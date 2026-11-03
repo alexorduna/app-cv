@@ -54,6 +54,7 @@ El CSV de seguimiento tiene las mismas columnas y orden del Sheet. Solo incluye 
 | **Aplicar asistido** | Cola de "Lista para aplicar" por prioridad. Abre el enlace en otra pestaña, muestra tu banco de respuestas (buscador y copiar), la carta aprobada y los campos que suele pedir el ATS (Greenhouse, Lever, Ashby, Workable, Workday, LinkedIn, Wellfound, Handshake). "Ya apliqué" solo registra la fecha. |
 | **Cartas** | Borrador por vacante con tu plantilla, tu perfil y los datos de la vacante. Revisa que no invente datos, no mencione salario y no use rayas largas. Siempre queda en Borrador hasta que la apruebes. |
 | **Buscar vacantes** | Nuevas (aceptar o descartar en lote), Fuentes (buscar ahora y estado de cada fuente), Pegar alerta, Pegar enlace y Descartadas por filtros (con motivo y botón para rescatar). |
+| **Historial de descartes** | Lo que tú descartaste, con tu motivo y la fecha. No se borra solo; puedes restaurar al tablero. |
 | **Banco de respuestas** | Editar las respuestas que copias al aplicar. |
 | **Configuración** | Filtros y palabras clave, fuentes, empresas de Greenhouse/Lever/Ashby, listas de GitHub, proveedor de IA, perfil y plantilla. |
 
@@ -83,7 +84,7 @@ Reglas de red: respeta robots.txt, máximo 1 petición por segundo por dominio (
 - Prácticas: máximo 6 h/día (si no se sabe, pasa con aviso).
 - Solo nivel de entrada: se descartan Senior, Staff, Lead, Manager, Principal, Architect, niveles II/III y descripciones que piden 3+ años de experiencia.
 - Área por palabras clave: Ofensiva (prioridad 1), Defensiva (2), Software (3).
-- Lo que no pasa queda como **Descartada** con el motivo, para que lo revises.
+- Lo que no pasa queda como **Descartada** con el motivo, para que lo revises. Las vacantes cerradas (🔒) de las listas no se guardan.
 
 ## IA para cartas
 

@@ -67,8 +67,8 @@ describe("Pegar alerta", () => {
     const { vacantes } = extraerVacantesDeAlerta(fx("linkedin.txt"));
     const a = ingresarLote(db, vacantes, "LinkedIn (alerta)", CONFIG_POR_DEFECTO);
     const b = ingresarLote(db, vacantes, "LinkedIn (alerta)", CONFIG_POR_DEFECTO);
-    expect(a).toEqual({ nuevas: 1, descartadas: 3, duplicadas: 0 });
-    expect(b).toEqual({ nuevas: 0, descartadas: 0, duplicadas: 4 });
+    expect(a).toEqual({ nuevas: 1, descartadas: 3, duplicadas: 0, omitidas: 0 });
+    expect(b).toEqual({ nuevas: 0, descartadas: 0, duplicadas: 4, omitidas: 0 });
     expect(listarNuevas(db)[0].plataforma).toBe("LinkedIn (alerta)");
   });
 });

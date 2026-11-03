@@ -155,7 +155,8 @@ describe("fuente GitHub completa", () => {
     const [res] = await buscarVacantes(db, { http: new ClienteHttp({ fetch: fn, intervaloMinimoMs: 0 }) });
     expect(res.fuente).toBe(github.id);
     expect(res.nuevas).toBe(2);
-    expect(res.descartadas).toBe(2);
+    expect(res.descartadas).toBe(1);
+    expect(res.omitidas).toBe(1); // la cerrada (🔒) no se guarda
     const todas = db.select().from(vacantes).all();
     expect(todas.filter((v) => v.estado === "Por revisar")).toHaveLength(2);
     expect(todas.filter((v) => v.estado === "Descartada").every((v) => v.motivoDescarte.length > 0)).toBe(true);

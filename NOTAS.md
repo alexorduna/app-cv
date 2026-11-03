@@ -44,9 +44,15 @@ Decisiones tomadas eligiendo la opción más simple cuando había dudas. Todas s
 - **api.github.com**: su robots.txt es para crawlers web; como pediste usar explícitamente la API de GitHub, ese host está en una lista de "APIs autorizadas" del cliente HTTP y no consulta robots.txt (sí respeta 1 req/s y los límites de la API: lee `x-ratelimit-remaining` y se detiene antes de agotarlo). `raw.githubusercontent.com` sí pasa por robots.txt.
 - **Listas de GitHub**: si la rama está vacía, uso la rama por defecto del repo (`default_branch`) y luego `main` y `dev`. Busco `.github/scripts/listings.json` y `listings.json`; si no existen, leo tablas HTML o Markdown del README. En los repos de SimplifyJobs, `listings.json` está en `.github/scripts/` de la rama `dev` (la rama `main` no existe).
 - `paralax/awesome-cybersecurity-internships` queda con formato "Lista de enlaces" (`* Empresa [Puesto](url), Ubicación`).
-- En `listings.json` se omiten entradas con `is_visible: false`. Las `active: false` se guardan como Descartada "Cerrada (🔒)". Si el repo tiene "intern" en el nombre, el tipo es Prácticas.
-- La primera lectura de Summer2026-Internships guarda ~17 500 filas como Descartadas (la mayoría cerradas o no remotas). Tarda unos 4 s; las siguientes lecturas se saltan si el SHA no cambió.
+- En `listings.json` se omiten entradas con `is_visible: false`. **Las cerradas (🔒, `active: false`) no se guardan** (pedido por Alex); la migración `0001` borra las que ya estaban. Si el repo tiene "intern" en el nombre, el tipo es Prácticas.
+- Probado con datos reales (noviembre 2026): las tres listas por defecto se leyeron, se guardó su SHA y la segunda corrida se saltó por "sin cambios". En el sandbox donde se construyó, `api.github.com` está bloqueado, así que esas dos llamadas (rama por defecto y SHA) se respondieron con `git ls-remote`; en tu máquina la app llama a la API pública directamente (sin login, 60 peticiones/hora, usa 2 por lista).
 - El SHA se guarda al leer la lista con éxito.
+
+## Historial de descartes
+
+- Cada descarte guarda quién lo hizo (`descartada_por`: `alex` o `filtros`) y cuándo (`fecha_descarte`).
+- Lo que descartas tú (tablero, detalle, bandeja Nuevas o filas "Descartada" del Sheet) queda en **Historial de descartes** con tu motivo y fecha, y nunca se borra solo. Desde ahí puedes restaurarla al tablero.
+- Lo que descartan los filtros sigue en Buscar vacantes → Descartadas por filtros.
 
 ## Pegar alerta
 

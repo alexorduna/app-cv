@@ -23,13 +23,13 @@ export function BotonBuscar({ hayActivas }: { hayActivas: boolean }) {
       {res && (
         <table className="w-full text-sm">
           <thead className="text-left text-xs text-zinc-500">
-            <tr><th className="py-1">Fuente</th><th>Leídas</th><th>Nuevas</th><th>Descartadas</th><th>Duplicadas</th><th>Mensaje</th></tr>
+            <tr><th className="py-1">Fuente</th><th>Leídas</th><th>Nuevas</th><th>Descartadas</th><th>Duplicadas</th><th>Cerradas (no se guardan)</th><th>Mensaje</th></tr>
           </thead>
           <tbody>
             {res.map((r) => (
               <tr key={r.fuente} className="border-t border-zinc-100 align-top dark:border-zinc-800">
                 <td className="py-1.5 font-medium">{r.ok ? "✔" : "✖"} {r.nombre}</td>
-                <td>{r.encontradas}</td><td>{r.nuevas}</td><td>{r.descartadas}</td><td>{r.duplicadas}</td>
+                <td>{r.encontradas}</td><td>{r.nuevas}</td><td>{r.descartadas}</td><td>{r.duplicadas}</td><td>{r.omitidas}</td>
                 <td className={`text-xs ${r.ok ? "text-zinc-500" : "text-red-600 dark:text-red-400"}`}>{r.mensaje}</td>
               </tr>
             ))}
