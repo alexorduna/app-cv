@@ -8,34 +8,45 @@ import { obtenerVacante } from "@/lib/vacantes";
 import { configIA, obtenerProveedor, type ProveedorIA } from "./proveedores";
 import { limpiarSalidaIA, revisarCarta, type Revision } from "./validar";
 
+// Las cartas se redactan en inglés.
 const MOTIVOS: Record<string, string> = {
-  Ofensiva: "Me interesa especialmente la seguridad ofensiva: pruebas de penetración, análisis de vulnerabilidades y entender cómo se atacan los sistemas para ayudar a protegerlos.",
-  Defensiva: "Me interesa la seguridad defensiva: monitoreo, detección y respuesta a incidentes para proteger la operación del equipo.",
-  Software: "Me interesa construir software confiable y seguro, con buenas prácticas de desarrollo y automatización.",
+  Ofensiva: "I am especially drawn to offensive security: penetration testing, vulnerability assessment and understanding how systems are attacked in order to help protect them.",
+  Defensiva: "I am especially drawn to defensive security: monitoring, detection and incident response to keep the team's operations safe.",
+  Software: "I enjoy building reliable and secure software, with solid development practices and automation.",
 };
 
-function campoPerfil(perfil: string, campo: string): string {
-  const m = perfil.match(new RegExp(`^\\s*${campo}\\s*:\\s*(.+)$`, "im"));
-  return m ? m[1].trim() : "";
+/** Lee "Campo: valor" del perfil; acepta varios nombres de campo (inglés o español). */
+function campoPerfil(perfil: string, ...campos: string[]): string {
+  for (const campo of campos) {
+    const m = perfil.match(new RegExp(`^\\s*${campo}\\s*:\\s*(.+)$`, "im"));
+    if (m) return m[1].trim();
+  }
+  return "";
 }
+
+const minusculaInicial = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
 
 /** Datos de la vacante que la carta puede usar (nada más). */
 export function datosVacante(v: Pick<Vacante, "empresa" | "puesto" | "area" | "tipo" | "region" | "notas" | "plataforma">): string {
-  return [`Empresa: ${v.empresa}`, `Puesto: ${v.puesto}`, `Área: ${v.area}`, `Tipo: ${v.tipo}`, `Región: ${v.region}`, v.notas ? `Notas de Alex: ${v.notas}` : ""]
+  return [`Company: ${v.empresa}`, `Position: ${v.puesto}`, `Area: ${v.area}`, `Type: ${v.tipo}`, `Region: ${v.region}`, v.notas ? `Alex's notes: ${v.notas}` : ""]
     .filter(Boolean)
     .join("\n");
 }
 
 /** Rellena la plantilla sin IA (lo usa el proveedor mock y sirve de respaldo). */
 export function rellenarPlantilla(plantilla: string, perfil: string, v: Pick<Vacante, "empresa" | "puesto" | "area">): string {
-  const nombre = (campoPerfil(perfil, "Nombre") || "Alex").replace(/\s*\(.*?\)\s*/g, "").trim();
-  const formacion = campoPerfil(perfil, "Formación");
-  const intereses = campoPerfil(perfil, "Intereses");
-  const resumen = [formacion ? `Soy ${formacion.replace(/\.$/, "")}.` : "", intereses ? `Me enfoco en ${intereses.replace(/\.$/, "")}.` : ""]
+  const nombre = (campoPerfil(perfil, "Name", "Nombre") || "Alex").replace(/\s*\(.*?\)\s*/g, "").trim();
+  const formacion = campoPerfil(perfil, "Education", "Formación");
+  const intereses = campoPerfil(perfil, "Interests", "Intereses");
+  const articulo = (t: string) => (/^(a|an|the)\s/i.test(t) ? "" : /^[aeiou]/i.test(t) ? "an " : "a ");
+  const resumen = [
+    formacion ? `I am ${articulo(formacion)}${minusculaInicial(formacion.replace(/\.$/, ""))}.` : "",
+    intereses ? `My main interests are ${minusculaInicial(intereses.replace(/\.$/, ""))}.` : "",
+  ]
     .filter(Boolean)
     .join(" ");
   return plantilla
-    .replaceAll("{empresa}", v.empresa || "su empresa")
+    .replaceAll("{empresa}", v.empresa || "hiring")
     .replaceAll("{puesto}", v.puesto)
     .replaceAll("{resumen_perfil}", resumen)
     .replaceAll("{motivo}", MOTIVOS[v.area] ?? MOTIVOS.Software)
@@ -44,15 +55,15 @@ export function rellenarPlantilla(plantilla: string, perfil: string, v: Pick<Vac
 
 export function construirPeticion(perfil: string, plantilla: string, v: Vacante) {
   const sistema = [
-    "Eres un asistente que redacta cartas de presentación breves (máximo 180 palabras) para Alex.",
-    "Reglas estrictas:",
-    "1. Usa SOLO datos del perfil y de la vacante que se te dan. No inventes experiencia, empresas, cifras, certificaciones ni logros.",
-    "2. No menciones salario, sueldo, compensación ni dinero.",
-    "3. No uses rayas largas (— ni –). Usa comas, puntos o paréntesis.",
-    "4. Escribe en el idioma del puesto (si el título está en inglés, en inglés; si no, en español).",
-    "5. Devuelve solo el texto de la carta, sin comentarios.",
+    "You write short cover letters (180 words maximum) for Alex.",
+    "Strict rules:",
+    "1. Write the letter in English.",
+    "2. Use ONLY facts from the profile and the job posting provided. Never invent experience, employers, numbers, certifications or achievements.",
+    "3. Do not mention salary, pay, compensation or money.",
+    "4. Do not use em dashes or en dashes (— or –). Use commas, periods or parentheses.",
+    "5. Return only the letter text, with no comments.",
   ].join("\n");
-  const usuario = `PERFIL DE ALEX:\n${perfil}\n\nVACANTE:\n${datosVacante(v)}\n\nPLANTILLA DE REFERENCIA (estructura y tono):\n${plantilla}`;
+  const usuario = `ALEX'S PROFILE:\n${perfil}\n\nJOB POSTING:\n${datosVacante(v)}\n\nREFERENCE TEMPLATE (structure and tone):\n${plantilla}`;
   return { sistema, usuario, respaldo: rellenarPlantilla(plantilla, perfil, v) };
 }
 

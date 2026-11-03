@@ -23,8 +23,12 @@ describe("cartas", () => {
     expect(c.version).toBe(1);
     expect(c.proveedor).toBe("mock");
     expect(c.texto).toContain(v.empresa);
+    expect(c.texto).toMatch(/^Dear .+ team,/);
+    expect(c.texto).toContain("I am a final-year student");
     expect(c.texto).not.toMatch(/[—–]/);
-    expect(aprobarCarta(db, c.id).errores).toEqual([]);
+    const rev = aprobarCarta(db, c.id);
+    expect(rev.errores).toEqual([]);
+    expect(rev.avisos).toEqual([]);
     expect(cartaAprobada(db, v.id)?.id).toBe(c.id);
     const c2 = await generarBorrador(db, v.id);
     expect(c2.version).toBe(2);

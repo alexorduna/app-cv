@@ -22,6 +22,8 @@ export interface ConfigFiltros {
   bloqueoClearance: string[];
   bloqueoCiudadania: string[];
   maxHorasPracticas: number;
+  seniority: string[];
+  maxAniosExperiencia: number;
 }
 
 export function construirConfig(valores: Record<string, string | undefined>): ConfigFiltros {
@@ -45,6 +47,8 @@ export function construirConfig(valores: Record<string, string | undefined>): Co
     bloqueoClearance: aLista(v("bloqueo_clearance")),
     bloqueoCiudadania: aLista(v("bloqueo_ciudadania")),
     maxHorasPracticas: Number(v("max_horas_practicas")) || 6,
+    seniority: aLista(v("excluir_seniority")),
+    maxAniosExperiencia: v("max_anios_experiencia").trim() === "" ? Infinity : Number(v("max_anios_experiencia")),
   };
 }
 
@@ -63,6 +67,8 @@ export interface Candidata {
   horasPorDia?: string;
   salario?: string;
   marcas?: { cerrada?: boolean; ciudadania?: boolean; sinPatrocinio?: boolean };
+  /** Nivel que reporta la fuente ("Senior (5-10 years)", "Junior", "Semi Senior"…). */
+  nivel?: string;
 }
 
 export type Region =
@@ -126,6 +132,46 @@ function ordenAreas(cfg: ConfigFiltros): [Area, string[]][] {
     cacheOrden.set(cfg, orden);
   }
   return orden;
+}
+
+const NIVEL_ENTRADA = /\b(i|1|junior|jr|entry[- ]level|entry|graduate|new grad|intern|internship|trainee|apprentice|associate)\b/i;
+const NIVEL_INTERMEDIO = /\b(?:ii|iii|iv)\b|\b(?:v|[2-5])\s*$|\blevel\s*[2-9]\b|\b[lp][3-9]\b/i;
+
+/**
+ * ¿El puesto NO puede ser de nivel de entrada? Devuelve el motivo o null.
+ * Senior, Staff, Lead, Manager… siempre se descartan; los niveles II/III solo si el título no dice también I o Junior.
+ */
+export function motivoSeniority(titulo: string, nivelFuente: string | undefined, cfg: ConfigFiltros): string | null {
+  const fuerte = primeraCoincidencia(titulo, cfg.seniority);
+  if (fuerte) return `Puesto no es de nivel de entrada ("${fuerte}")`;
+  const t = titulo.replace(/[()[\],\-–/]/g, " ").replace(/\s+/g, " ").trim();
+  const intermedio = t.match(NIVEL_INTERMEDIO);
+  // "SOC Analyst I/II" o "Junior Engineer II" se conservan: también son de entrada.
+  if (intermedio && !NIVEL_ENTRADA.test(t)) return `Puesto de nivel intermedio o superior ("${intermedio[0].trim()}")`;
+  if (nivelFuente) {
+    const n = primeraCoincidencia(nivelFuente, cfg.seniority);
+    if (n) return `La fuente lo marca como "${nivelFuente}"`;
+  }
+  return null;
+}
+
+/** Años de experiencia que pide la descripción (el mayor de los mínimos mencionados), o null. */
+export function aniosExperiencia(texto: string): number | null {
+  const t = normalizar(texto);
+  const patrones = [
+    /(\d{1,2})\s*\+?\s*(?:-|to|a)?\s*(?:\d{1,2})?\s*\+?\s*(?:years?|yrs?)(?:'s)?\s+(?:of\s+)?(?:[a-z/&,-]+\s+){0,5}?(?:experience|exp\b)/g,
+    /(?:minimum|at least|min\.?)\s+(?:of\s+)?(\d{1,2})\s*\+?\s*(?:years?|yrs?)/g,
+    /(\d{1,2})\s*\+?\s*(?:-|a)?\s*(?:\d{1,2})?\s*anos?\s+de\s+experiencia/g,
+    /experiencia\s+(?:minima\s+)?de\s+(\d{1,2})\s*\+?\s*anos?/g,
+  ];
+  let max: number | null = null;
+  for (const re of patrones) {
+    for (const m of t.matchAll(re)) {
+      const n = Number(m[1]);
+      if (n > 0 && n <= 15 && (max === null || n > max)) max = n;
+    }
+  }
+  return max;
 }
 
 export function detectarArea(puesto: string, cfg: ConfigFiltros): { area: Area | ""; palabra: string | null } {
@@ -211,6 +257,12 @@ export function evaluar(c: Candidata, cfg: ConfigFiltros = CONFIG_POR_DEFECTO): 
   // 3. Palabras excluidas en título o ubicación
   const excluida = primeraCoincidencia(`${titulo}\n${ubicacion}`, cfg.excluir);
   if (excluida) return descartar(`Palabra excluida: "${excluida}"`);
+
+  // 3b. Solo nivel de entrada
+  const senior = motivoSeniority(titulo, c.nivel, cfg);
+  if (senior) return descartar(senior);
+  const anios = aniosExperiencia(`${c.descripcion ?? ""}\n${c.nivel ?? ""}`);
+  if (anios !== null && anios > cfg.maxAniosExperiencia) return descartar(`Pide ${anios}+ años de experiencia (máximo ${cfg.maxAniosExperiencia})`);
 
   // 4. Restricciones legales en cualquier parte del texto
   const ciudadania = primeraCoincidencia(textoCompleto, cfg.bloqueoCiudadania);

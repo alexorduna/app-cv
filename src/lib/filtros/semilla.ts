@@ -14,6 +14,11 @@ export const FILTROS_SEMILLA: Record<string, string> = {
     "junior, jr, associate, apprentice, apprenticeship, trainee, intern, internship, entry level, graduate, new grad",
   excluir:
     "UI/UX, UX designer, UI designer, product designer, sales, recruiter, on-site, onsite, hybrid, US citizen only, EU residents only",
+  // Puestos que no pueden ser de nivel de entrada (se buscan en el título y en el nivel que da la fuente).
+  excluir_seniority:
+    "senior, sr, snr, staff, principal, lead, tech lead, team lead, leader, manager, director, head of, head, vp, vice president, chief, cto, ciso, architect, distinguished, fellow, expert, mid-level, mid level, midlevel, semi senior, semisenior, ssr, experienced",
+  // Máximo de años de experiencia que puede pedir la descripción (3+ años se descarta).
+  max_anios_experiencia: "2",
 
   // Ubicación
   regiones_aceptadas_mexico: "mexico, cdmx, guadalajara, monterrey",
@@ -67,15 +72,29 @@ export const FILTROS_SEMILLA: Record<string, string> = {
   anthropic_modelo: "",
 
   // Perfil ficticio de ejemplo: reemplázalo por el tuyo desde Configuración.
-  perfil: `Nombre: Alex (ejemplo)
-Formación: estudiante de último año de Ingeniería en Computación y Ciberseguridad.
-Ubicación: México. Busco trabajo 100% remoto.
-Intereses: pruebas de penetración, red team, análisis de vulnerabilidades, SOC y desarrollo backend.
-Herramientas: Burp Suite, Nmap, Metasploit, Wireshark, Linux, Python, TypeScript, C#.
-Proyectos: (ejemplo) laboratorio casero de Active Directory; CTFs en plataformas públicas.
-Idiomas: español nativo, inglés técnico.`,
+  perfil: `Name: Alex (example)
+Education: final-year student of Computer Engineering and Cybersecurity.
+Location: Mexico. Looking for 100% remote work.
+Interests: penetration testing, red teaming, vulnerability assessment, SOC work and backend development.
+Tools: Burp Suite, Nmap, Metasploit, Wireshark, Linux, Python, TypeScript, C#.
+Projects: (example) home Active Directory lab; CTFs on public platforms.
+Languages: Spanish (native), English (professional working proficiency).`,
 
-  plantilla_carta: `Hola, equipo de {empresa}:
+  plantilla_carta: `Dear {empresa} team,
+
+I am writing to apply for the {puesto} position. {resumen_perfil}
+
+{motivo}
+
+I am available to work 100% remotely and would welcome the chance to talk about how I can contribute to your team.
+
+Best regards,
+{nombre}`,
+};
+
+/** Semillas anteriores (en español): si siguen intactas en la BD, se actualizan a la versión actual. */
+export const SEMILLAS_ANTERIORES: Record<string, string[]> = {
+  plantilla_carta: [`Hola, equipo de {empresa}:
 
 Me interesa la vacante de {puesto}. {resumen_perfil}
 
@@ -84,7 +103,7 @@ Me interesa la vacante de {puesto}. {resumen_perfil}
 Puedo trabajar de forma 100% remota. Quedo atento para conversar.
 
 Saludos,
-{nombre}`,
+{nombre}`],
 };
 
 export const CLAVES_FUENTES = Object.keys(FILTROS_SEMILLA).filter((k) => k.startsWith("fuente_"));

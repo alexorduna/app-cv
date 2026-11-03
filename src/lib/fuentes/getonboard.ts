@@ -13,11 +13,15 @@ interface RespuestaGob {
       min_salary?: number | null;
       max_salary?: number | null;
       company?: { data?: { attributes?: { name?: string } } };
+      seniority?: { data?: { id?: string | number } };
     };
     links?: { public_url?: string };
   }[];
   meta?: { page: number; total_pages: number };
 }
+
+/** Catálogo de /api/v0/seniorities. */
+const SENIORITY_GOB: Record<string, string> = { "1": "No experience", "2": "Junior", "3": "Semi Senior", "4": "Senior", "5": "Expert" };
 
 export function mapearGetOnBoard(r: RespuestaGob): CandidataFuente[] {
   return (r.data ?? []).map((d) => {
@@ -33,6 +37,7 @@ export function mapearGetOnBoard(r: RespuestaGob): CandidataFuente[] {
       descripcion: `${quitarHtml(a.description ?? "")}${modalidad === "remote_local" ? "\n(Get on Board: remoto local, puede pedir residir en el país de la empresa)" : ""}`,
       enlace: d.links?.public_url ?? `https://www.getonbrd.com/jobs/${d.id}`,
       salario,
+      nivel: SENIORITY_GOB[String(a.seniority?.data?.id ?? "")],
     };
   });
 }

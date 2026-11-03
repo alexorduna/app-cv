@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { DB } from "@/db";
 import { filtros } from "@/db/schema";
-import { FILTROS_SEMILLA } from "./semilla";
+import { FILTROS_SEMILLA, SEMILLAS_ANTERIORES } from "./semilla";
 import { construirConfig, type ConfigFiltros } from "./motor";
 
 export function leerFiltros(db: DB): Record<string, string> {
@@ -28,5 +28,10 @@ export function leerFiltro(db: DB, clave: string): string {
 export function sembrarFiltros(db: DB) {
   for (const [clave, valor] of Object.entries(FILTROS_SEMILLA)) {
     db.insert(filtros).values({ clave, valor }).onConflictDoNothing().run();
+  }
+  // Actualiza semillas viejas que el usuario nunca editó.
+  for (const [clave, anteriores] of Object.entries(SEMILLAS_ANTERIORES)) {
+    const actual = leerFiltro(db, clave);
+    if (anteriores.includes(actual)) guardarFiltro(db, clave, FILTROS_SEMILLA[clave]);
   }
 }

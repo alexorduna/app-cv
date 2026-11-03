@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluar, clasificarUbicacion, parsearHoras, detectarTipo, CONFIG_POR_DEFECTO as cfg } from "@/lib/filtros/motor";
+import { evaluar, clasificarUbicacion, parsearHoras, detectarTipo, aniosExperiencia, CONFIG_POR_DEFECTO as cfg } from "@/lib/filtros/motor";
 
 const base = { empresa: "ACME" };
 
@@ -103,5 +103,47 @@ describe("palabras clave, exclusiones y prácticas", () => {
     expect(evaluar({ ...base, puesto: "Security Intern", ubicacion: "Remote", marcas: { ciudadania: true } }).motivo).toMatch(/🇺🇸/);
     const r = evaluar({ ...base, puesto: "Security Intern", ubicacion: "Remote in USA", marcas: { sinPatrocinio: true } });
     expect(r.motivo).toMatch(/🛂/);
+  });
+});
+
+describe("solo nivel de entrada", () => {
+  const t = (puesto: string, extra: { descripcion?: string; nivel?: string } = {}) => evaluar({ empresa: "ACME", puesto, ubicacion: "Remote", ...extra });
+  it("descarta senior, staff, lead, manager, principal, architect", () => {
+    for (const p of ["Senior Penetration Tester", "Sr. SOC Analyst", "Staff Security Engineer", "Lead Red Team Operator", "Security Engineering Manager", "Principal Application Security Engineer", "Security Architect", "Head of Security", "Director, Incident Response"]) {
+      expect(t(p).pasa, p).toBe(false);
+      expect(t(p).motivo, p).toMatch(/nivel de entrada/);
+    }
+  });
+  it("descarta niveles II/III salvo que también diga I o Junior", () => {
+    expect(t("Security Analyst II").motivo).toMatch(/intermedio/);
+    expect(t("Software Engineer III").pasa).toBe(false);
+    expect(t("Backend Engineer 2").pasa).toBe(false);
+    expect(t("SOC Analyst I/II").pasa).toBe(true);
+    expect(t("SOC Analyst I").pasa).toBe(true);
+    expect(t("Tier 1 SOC Analyst").pasa).toBe(true);
+  });
+  it("conserva puestos de entrada y sin nivel", () => {
+    for (const p of ["Junior Pentester", "Associate Security Consultant", "Security Analyst", "Vulnerability Management Analyst", "Cybersecurity Intern", "Graduate Software Engineer"]) {
+      expect(t(p).pasa, p).toBe(true);
+    }
+  });
+  it("usa el nivel que reporta la fuente", () => {
+    expect(t("Penetration Tester", { nivel: "Senior (5-10 years)" }).pasa).toBe(false);
+    expect(t("Penetration Tester", { nivel: "Mid-level (2-5 years)" }).pasa).toBe(false);
+    expect(t("Penetration Tester", { nivel: "Semi Senior" }).pasa).toBe(false);
+    expect(t("Penetration Tester", { nivel: "Junior (1-2 years)" }).pasa).toBe(true);
+    expect(t("Penetration Tester", { nivel: "Entry level / Graduate" }).pasa).toBe(true);
+  });
+  it("descarta si pide 3 o más años de experiencia", () => {
+    expect(t("Penetration Tester", { descripcion: "Requirements: 5+ years of experience in offensive security." }).motivo).toMatch(/5\+ años/);
+    expect(t("SOC Analyst", { descripcion: "3-5 years of relevant work experience" }).pasa).toBe(false);
+    expect(t("SOC Analyst", { descripcion: "Minimum 4 years in a SOC" }).pasa).toBe(false);
+    expect(t("Backend Engineer", { descripcion: "Mínimo 3 años de experiencia con Python" }).pasa).toBe(false);
+    expect(t("SOC Analyst", { descripcion: "1-2 years of experience or relevant internships" }).pasa).toBe(true);
+    expect(t("SOC Analyst", { descripcion: "We have been in business for 20 years." }).pasa).toBe(true);
+  });
+  it("detecta años de experiencia", () => {
+    expect(aniosExperiencia("2+ years experience with Python and 4+ years of professional software experience")).toBe(4);
+    expect(aniosExperiencia("No experience required")).toBeNull();
   });
 });

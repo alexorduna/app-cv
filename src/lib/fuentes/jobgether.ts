@@ -11,6 +11,7 @@ interface RespuestaJobgether {
     location?: string;
     remote?: string;
     contractType?: string;
+    experience?: string;
     salaryRange?: string;
   }[];
 }
@@ -31,6 +32,7 @@ export function mapearJobgether(r: RespuestaJobgether): CandidataFuente[] {
     enlace: j.url,
     salario: j.salaryRange ?? "",
     tipo: tipoJobgether(j.contractType),
+    nivel: j.experience,
   }));
 }
 
