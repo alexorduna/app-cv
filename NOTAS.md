@@ -55,6 +55,18 @@ Decisiones tomadas eligiendo la opción más simple cuando había dudas. Todas s
 - Lo que descartas tú (tablero, detalle, bandeja Nuevas o filas "Descartada" del Sheet) queda en **Historial de descartes** con tu motivo y fecha, y nunca se borra solo. Desde ahí puedes restaurarla al tablero.
 - Lo que descartan los filtros sigue en Buscar vacantes → Descartadas por filtros.
 
+## Google Sheet como base de datos
+
+- Diseño: en cada petición se lee el Sheet completo (1 llamada de estructura + 1 de datos) a una SQLite **en memoria**, la app trabaja igual que en local y al final se escriben solo las celdas que cambiaron (triggers de SQLite anotan qué filas cambian). Así la lógica de filtros, cartas y tablero no tuvo que reescribirse.
+- Las columnas se buscan por encabezado, no por posición. Valores que la app no entiende ("No indicado" en Tipo, "Otra" en Región) se conservan: solo se escribe una celda si la app la cambió.
+- En `Banco de respuestas` se usan tus encabezados (Tema, Pregunta frecuente, Respuesta (inglés), Estado). "Listo" = Completa. La respuesta salarial nunca entra a la app ni se borra de tu Sheet.
+- Las filas nuevas en `Seguimiento` copian las fórmulas de la fila 2 (p. ej. "Días desde la aplicación") ajustando el número de fila.
+- Filas que agregues a mano sin ID reciben el siguiente ID.
+- Límite: si dos personas o pestañas guardan al mismo tiempo podrían asignar el mismo ID nuevo. Para un solo usuario no pasa en la práctica.
+- Se agregaron los estados `Rechazada` y `Sin respuesta`, que ya existían en la lista desplegable del Sheet. "Rechazada" cuenta como respuesta en la tasa de respuesta.
+- Autenticación con cuenta de servicio de Google (JWT firmado con `node:crypto`, sin dependencias nuevas). Alternativa considerada: Apps Script (sin Google Cloud); se eligió cuenta de servicio por velocidad.
+- Probado contra un servidor falso de la API de Sheets (tests/sheets-falso.ts) y con un build "standalone" como el de Netlify. No se probó contra Google real ni en Netlify real (falta la llave).
+
 ## Pegar alerta
 
 - Reglas simples: cada enlace de vacante (LinkedIn `/jobs/view/123`, Wellfound `/jobs/…`, Handshake `/jobs/123`) cierra un bloque; de las líneas anteriores se toman puesto, empresa y ubicación, ignorando ruido ("Easy Apply", "3 connections", "Actively recruiting"…). Si no hay enlaces (texto copiado sin hipervínculos), se separa por líneas en blanco.

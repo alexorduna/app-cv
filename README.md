@@ -94,6 +94,29 @@ Las cartas se redactan en inglés. Proveedor en Configuración o en `.env`:
 - `ollama`: modelo local en `OLLAMA_URL` (por defecto `http://localhost:11434`, modelo `llama3.1`).
 - `anthropic`: solo si pones `ANTHROPIC_API_KEY` en `.env`. Tu perfil y los datos de la vacante se envían a la API de Anthropic.
 
+## En línea con Netlify (Google Sheet como base de datos)
+
+Opcional. En tu laptop la app usa `data/chamba.db`. Si defines `GOOGLE_SHEET_ID`, tu Google Sheet pasa a ser la base de datos:
+
+- En cada pantalla la app lee el Sheet y, al guardar, escribe **solo las celdas que cambiaron**. No toca tus fórmulas, tus listas desplegables ni las pestañas Inicio, Resumen y Filtros.
+- `Seguimiento` = tablero. `Nuevas` = bandeja por revisar. Se agregan las columnas "Motivo de descarte" (visible) y algunas técnicas ocultas al final.
+- Pestañas técnicas ocultas (empiezan con `_`): configuración, cartas, listas de GitHub, descartadas por filtros (las últimas 500), historial de actividad y huellas ya vistas.
+- La búsqueda corre en **GitHub Actions** cada 6 horas (`.github/workflows/buscar.yml`), porque Netlify corta las funciones a los pocos segundos.
+- Ollama no está disponible en línea: para cartas usa `mock` o Anthropic.
+
+**Configuración (una vez):**
+
+1. Google Cloud: crea un proyecto, activa la Google Sheets API, crea una cuenta de servicio y descarga su llave JSON.
+2. Comparte tu Sheet con el correo de la cuenta de servicio (termina en `iam.gserviceaccount.com`) como **Editor**.
+3. Netlify: importa este repo y define en *Site configuration → Environment variables*:
+   - `GOOGLE_SHEET_ID`: la URL o el ID de tu Sheet
+   - `GOOGLE_SERVICE_ACCOUNT_JSON`: el contenido completo del JSON (sin base64; Netlify limita el total de variables a 4 KB)
+   - `CHAMBA_CLAVE`: tu contraseña para entrar al sitio (usuario `alex`, o define `CHAMBA_USUARIO`)
+   - `CHAMBA_BUSQUEDA_EXTERNA` = `1`
+4. GitHub: en *Settings → Secrets and variables → Actions* agrega `GOOGLE_SHEET_ID` y `GOOGLE_SERVICE_ACCOUNT_JSON`.
+
+Para usar el Sheet también desde tu laptop, pon esas mismas variables en `.env` (puedes usar `GOOGLE_SERVICE_ACCOUNT_FILE=/ruta/a/la/llave.json`). La llave nunca va en el repo: `.gitignore` la excluye.
+
 ## Scripts
 
 | Comando | Qué hace |
@@ -106,6 +129,7 @@ Las cartas se redactan en inglés. Proveedor en Configuración o en `.env`:
 | `npm run import` | Importa `data/import/*.csv` |
 | `npm run export` | Exporta CSV a `data/export/` |
 | `npm run seed` | Carga los datos de ejemplo ficticios |
+| `npm run buscar` | Corre todas las fuentes activas y guarda (lo usa GitHub Actions) |
 
 ## Si algo falla
 

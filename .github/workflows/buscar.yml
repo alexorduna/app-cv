@@ -1,0 +1,33 @@
+# Búsqueda automática de vacantes. Guarda los resultados en tu Google Sheet (la base de datos de la app en línea).
+# Nunca aplica a nada: solo deja vacantes nuevas en la pestaña "Nuevas" para que tú las revises.
+name: Buscar vacantes
+
+on:
+  schedule:
+    - cron: "17 */6 * * *" # cada 6 horas (UTC)
+  workflow_dispatch: {} # botón "Run workflow" para correrla cuando quieras
+
+permissions:
+  contents: read
+
+concurrency:
+  group: buscar-vacantes
+  cancel-in-progress: false
+
+jobs:
+  buscar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Buscar y guardar en el Google Sheet
+        run: npm run buscar
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}

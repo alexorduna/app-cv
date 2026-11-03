@@ -28,3 +28,10 @@ data/export/
 .DS_Store
 npm-debug.log*
 coverage/
+
+# Llaves de Google (cuenta de servicio): NUNCA subir
+*service-account*.json
+*serviceaccount*.json
+credenciales*.json
+google-*.json
+chamba-*.json

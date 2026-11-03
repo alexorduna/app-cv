@@ -1,0 +1,9 @@
+# Despliegue en Netlify. El Google Sheet es la base de datos (ver README, sección "En línea con Netlify").
+# Netlify detecta Next.js solo; las variables secretas se ponen en el panel de Netlify, no aquí.
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
