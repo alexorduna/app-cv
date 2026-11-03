@@ -6,7 +6,7 @@ export const FILTROS_SEMILLA: Record<string, string> = {
   palabras_ofensiva:
     "penetration tester, pentester, pentest, red team, offensive security, security consultant, application security, appsec, vulnerability assessment, ethical hacker, junior, associate, apprentice, trainee, intern",
   palabras_defensiva:
-    "SOC analyst, security analyst, blue team, incident response, threat detection, vulnerability management, GRC analyst, DFIR, junior, associate",
+    "SOC analyst, security analyst, blue team, incident response, threat detection, vulnerability management, GRC analyst, DFIR, junior, associate, cybersecurity, information security, infosec",
   palabras_software:
     "software engineer, software developer, backend, back-end, full stack, fullstack, DevOps, SRE, site reliability, platform, automation, QA automation, security engineer, Python, C#, TypeScript, junior",
   // Palabras de nivel: cuentan como "bonus" pero no deciden el área por sí solas.
