@@ -6,7 +6,7 @@ Todo se automatiza hasta antes de aplicar: **el último clic lo das tú**. Chamb
 ## Inicio rápido
 
 ```bash
-git clone <URL-de-este-repo> chamba
+git clone https://github.com/alexorduna/app-cv.git chamba
 cd chamba
 ./start.sh
 ```
@@ -65,7 +65,7 @@ Cada fuente es un módulo independiente (`src/lib/fuentes/`) con interruptor en 
 |---|---|---|
 | Get on Board | Activa | API pública `getonbrd.com/api/v0` |
 | Jobgether | Activa | API pública documentada en `jobgether.com/llms.txt` |
-| Greenhouse / Lever / Ashby | Activas | APIs públicas por empresa (slugs en Configuración) |
+| Greenhouse / Lever / Ashby | Activas | APIs públicas por empresa: 141 empresas verificadas (editables en Configuración) |
 | Listas de GitHub | Activa | `raw.githubusercontent.com` y `api.github.com`, sin login. Guarda el SHA para no repetir trabajo |
 | Remotive | Apagada | Su robots.txt prohíbe `/api/*`; si la enciendes, el cliente la bloquea igual |
 | RemoteRocketship | No disponible | Exige suscripción y API key |
@@ -81,12 +81,13 @@ Reglas de red: respeta robots.txt, máximo 1 petición por segundo por dominio (
 - Se descarta si exige residir o tener permiso de trabajo en EE. UU., UE o Reino Unido, ciudadanía o security clearance.
 - Se acepta México, LATAM, worldwide, anywhere y remoto sin país. Europa pasa con aviso (sueldo, inicio inmediato, residencia).
 - Prácticas: máximo 6 h/día (si no se sabe, pasa con aviso).
+- Solo nivel de entrada: se descartan Senior, Staff, Lead, Manager, Principal, Architect, niveles II/III y descripciones que piden 3+ años de experiencia.
 - Área por palabras clave: Ofensiva (prioridad 1), Defensiva (2), Software (3).
 - Lo que no pasa queda como **Descartada** con el motivo, para que lo revises.
 
 ## IA para cartas
 
-En Configuración o en `.env`:
+Las cartas se redactan en inglés. Proveedor en Configuración o en `.env`:
 
 - `mock` (por defecto): plantilla sin IA ni red.
 - `ollama`: modelo local en `OLLAMA_URL` (por defecto `http://localhost:11434`, modelo `llama3.1`).

@@ -6,7 +6,7 @@ export const FILTROS_SEMILLA: Record<string, string> = {
   palabras_ofensiva:
     "penetration tester, pentester, pentest, red team, offensive security, security consultant, application security, appsec, vulnerability assessment, ethical hacker, junior, associate, apprentice, trainee, intern",
   palabras_defensiva:
-    "SOC analyst, security analyst, blue team, incident response, threat detection, vulnerability management, GRC analyst, DFIR, junior, associate, cybersecurity, information security, infosec",
+    "SOC analyst, security analyst, blue team, incident response, threat detection, vulnerability management, GRC analyst, DFIR, junior, associate, cybersecurity, information security, infosec, SOC, security operations",
   palabras_software:
     "software engineer, software developer, backend, back-end, full stack, fullstack, DevOps, SRE, site reliability, platform, automation, QA automation, security engineer, Python, C#, TypeScript, junior",
   // Palabras de nivel: cuentan como "bonus" pero no deciden el área por sí solas.
@@ -61,9 +61,14 @@ export const FILTROS_SEMILLA: Record<string, string> = {
   fuente_isecjobs: "0",
 
   // Empresas para las APIs públicas de ATS (slug del tablero)
-  empresas_greenhouse: "gitlab",
-  empresas_lever: "",
-  empresas_ashby: "",
+  // Verificadas contra las APIs públicas (noviembre 2026): tableros existentes con vacantes remotas
+  // o empresas de seguridad. Edítalas en Configuración.
+  empresas_greenhouse:
+    "abnormalsecurity, affirm, airbnb, airtable, apiiro, asana, axonius, beyondtrust, bishopfox, bitwarden, brex, bugcrowd, canonical, censys, chainguard, chime, circleci, clara, cloudflare, cockroachlabs, coinbase, consensys, cribl, dashlane, databricks, datadog, descope, discord, dropbox, duolingo, elastic, endorlabs, expel, fastly, fivetran, gemini, gitlab, grafanalabs, gusto, honeycomb, huntress, instacart, island, jamf, jfrog, lastpass, launchdarkly, lyft, mongodb, mozilla, netlify, okta, okx, onetrust, orcasecurity, pagerduty, pinterest, planetscale, recordedfuture, reddit, securityscorecard, sentinellabs, socket, sourcegraph91, stripe, sumologic, sweetsecurity, synack, tailscale, tanium, thoropass, tines, torq, transmitsecurity, twilio, vercel, wikimedia, wizeline, wizinc, yubico",
+  empresas_lever:
+    "anchorage, coalfire, crypto, fly, jumpcloud, kavak, metabase, neon, palantir, secureframe, sophos, spotify, stackhawk, sysdig, toptal, twingate",
+  empresas_ashby:
+    "1password, airbyte, belvo, clerk, consensys, cyberhaven, docker, doppler, drata, goteleport, hackerone, hightouch, horizon3ai, immersivelabs, infisical, ledger, linear, materialsecurity, neon, netbird, notion, nubank, oligo, oyster, persona, plaid, posthog, railway, ramp, render, replit, sardine, secureframe, semgrep, sentry, snowflake, snyk, socket, socure, supabase, temporal, vanta, webflow, workos, zapier",
 
   // IA para cartas
   ia_proveedor: "",
@@ -94,6 +99,9 @@ Best regards,
 
 /** Semillas anteriores (en español): si siguen intactas en la BD, se actualizan a la versión actual. */
 export const SEMILLAS_ANTERIORES: Record<string, string[]> = {
+  empresas_greenhouse: ["gitlab"],
+  empresas_lever: [""],
+  empresas_ashby: [""],
   plantilla_carta: [`Hola, equipo de {empresa}:
 
 Me interesa la vacante de {puesto}. {resumen_perfil}

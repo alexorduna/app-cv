@@ -26,7 +26,7 @@ async function porEmpresa(
 
 // ---------- Greenhouse ----------
 interface GhRespuesta {
-  jobs: { title: string; absolute_url: string; location?: { name?: string }; content?: string }[];
+  jobs: { title: string; absolute_url: string; location?: { name?: string }; content?: string; company_name?: string }[];
 }
 export function mapearGreenhouse(r: GhRespuesta, empresa: string): CandidataFuente[] {
   return (r.jobs ?? []).map((j) => ({
@@ -45,10 +45,8 @@ export const greenhouse: Fuente = {
   clave: "fuente_greenhouse",
   buscar: (ctx) =>
     porEmpresa(ctx, "empresas_greenhouse", async (slug) => {
-      const base = `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(slug)}`;
-      const info = await ctx.http.json<{ name?: string }>(base).catch(() => ({ name: slug }));
-      const r = await ctx.http.json<GhRespuesta>(`${base}/jobs?content=true`);
-      return mapearGreenhouse(r, info.name || slug);
+      const r = await ctx.http.json<GhRespuesta>(`https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(slug)}/jobs?content=true`);
+      return mapearGreenhouse(r, r.jobs?.[0]?.company_name || slug);
     }),
 };
 

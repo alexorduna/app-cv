@@ -45,9 +45,8 @@ export async function buscarVacantes(db: DB, opciones: { http?: ClienteHttp; sol
   const activas = FUENTES.filter((f) =>
     opciones.soloFuentes ? opciones.soloFuentes.includes(f.id) : valores[f.clave] === "1" && !f.bloqueada,
   );
-  const resultados: ResultadoFuente[] = [];
-  for (const fuente of activas) resultados.push(await ejecutarFuente(db, fuente, http, valores, cfg));
-  return resultados;
+  // Las fuentes corren en paralelo: el límite de 1 petición/s es por dominio y lo aplica el cliente HTTP.
+  return Promise.all(activas.map((fuente) => ejecutarFuente(db, fuente, http, valores, cfg)));
 }
 
 async function ejecutarFuente(db: DB, fuente: Fuente, http: ClienteHttp, valores: Record<string, string>, cfg: ConfigFiltros): Promise<ResultadoFuente> {
