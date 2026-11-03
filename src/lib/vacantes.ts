@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import type { DB } from "@/db";
-import { vacantes, ESTADOS, type Estado, type NuevaVacante, type Vacante } from "@/db/schema";
+import { huellasVistas, vacantes, ESTADOS, type Estado, type NuevaVacante, type Vacante } from "@/db/schema";
 import { registrar } from "./actividad";
 import { calcularHuella } from "./huella";
 import { ahoraISO, hoyISO } from "./texto";
@@ -19,11 +19,14 @@ export interface ResultadoIngreso {
  * En ambos casos queda fuera del tablero (en_tablero = 0) hasta que Alex la acepte.
  */
 export function ingresarCandidata(db: DB, c: Candidata, plataforma: string, cfg: ConfigFiltros): ResultadoIngreso {
-  // Las vacantes cerradas (🔒) no sirven de nada: no se guardan.
-  if (c.marcas?.cerrada) return { estado: "omitida" };
   const huella = calcularHuella(c.enlace ?? "", c.empresa, c.puesto);
   const existente = db.select({ id: vacantes.id }).from(vacantes).where(eq(vacantes.huella, huella)).get();
   if (existente) return { estado: "duplicada", id: existente.id };
+  // Ya vista antes (p. ej. una descartada por filtros que luego se podó): no se repite el trabajo.
+  if (db.select().from(huellasVistas).where(eq(huellasVistas.huella, huella)).get()) return { estado: "duplicada" };
+  db.insert(huellasVistas).values({ huella }).onConflictDoNothing().run();
+  // Las vacantes cerradas (🔒) no sirven de nada: no se guardan.
+  if (c.marcas?.cerrada) return { estado: "omitida" };
   const ev = evaluar(c, cfg);
 
   const ahora = ahoraISO();
@@ -153,8 +156,9 @@ export interface Resumen {
   porEstado: Record<string, number>;
 }
 
-const ESTADOS_TRAS_APLICAR: Estado[] = ["Aplicada", "Respuesta recibida", "Entrevista", "Prueba técnica", "Oferta"];
-const ESTADOS_CON_RESPUESTA: Estado[] = ["Respuesta recibida", "Entrevista", "Prueba técnica", "Oferta"];
+const ESTADOS_TRAS_APLICAR: Estado[] = ["Aplicada", "Respuesta recibida", "Entrevista", "Prueba técnica", "Oferta", "Rechazada", "Sin respuesta"];
+// Un rechazo también es respuesta.
+const ESTADOS_CON_RESPUESTA: Estado[] = ["Respuesta recibida", "Entrevista", "Prueba técnica", "Oferta", "Rechazada"];
 
 export function calcularResumen(lista: Pick<Vacante, "estado" | "fechaAplicacion">[]): Resumen {
   const porEstado: Record<string, number> = Object.fromEntries(ESTADOS.map((e) => [e, 0]));

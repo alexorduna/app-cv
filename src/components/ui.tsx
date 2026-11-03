@@ -9,6 +9,8 @@ const COLOR_ESTADO: Record<string, string> = {
   Entrevista: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
   "Prueba técnica": "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300",
   Oferta: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+  Rechazada: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
+  "Sin respuesta": "bg-stone-200 text-stone-700 dark:bg-stone-800 dark:text-stone-300",
   Descartada: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
 };
 

@@ -14,6 +14,8 @@ export const ESTADOS = [
   "Entrevista",
   "Prueba técnica",
   "Oferta",
+  "Rechazada",
+  "Sin respuesta",
   "Descartada",
 ] as const;
 export type Estado = (typeof ESTADOS)[number];
@@ -128,6 +130,11 @@ export const ejecucionesFuentes = sqliteTable("ejecuciones_fuentes", {
   mensaje: text("mensaje").notNull().default(""),
   encontradas: integer("encontradas").notNull().default(0),
   nuevas: integer("nuevas").notNull().default(0),
+});
+
+// Huellas de vacantes ya vistas (también las que se podaron), para no volver a procesarlas.
+export const huellasVistas = sqliteTable("huellas_vistas", {
+  huella: text("huella").primaryKey(),
 });
 
 export type Vacante = typeof vacantes.$inferSelect;

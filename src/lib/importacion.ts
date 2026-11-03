@@ -24,7 +24,7 @@ export const COLUMNAS_FILTROS = ["Clave", "Valor"] as const;
 /** Detecta preguntas de expectativa salarial: su respuesta nunca se guarda. */
 export function esPreguntaSalarial(pregunta: string): boolean {
   const p = normalizar(pregunta);
-  return /(salari|sueldo|compensa|pretension|expectativa econ|pay expectation|desired pay|rate expectation|tarifa)/.test(p);
+  return /(salar(y|i)|sueldo|compensa|pretension|expectativa econ|pay expectation|desired pay|expected pay|rate expectation|tarifa)/.test(p);
 }
 
 function columna(fila: Record<string, string>, nombre: string): string {
@@ -46,7 +46,9 @@ export function mapearEstado(v: string): Estado {
   const n = normalizar(v);
   const exacto = ESTADOS.find((e) => normalizar(e) === n);
   if (exacto) return exacto;
-  if (/descart|rechaz|cerrad/.test(n)) return "Descartada";
+  if (/rechaz/.test(n)) return "Rechazada";
+  if (/sin respuesta/.test(n)) return "Sin respuesta";
+  if (/descart|cerrad/.test(n)) return "Descartada";
   if (/ofert/.test(n)) return "Oferta";
   if (/prueba|tecnica|challenge/.test(n)) return "Prueba técnica";
   if (/entrevist/.test(n)) return "Entrevista";
@@ -63,7 +65,8 @@ export function mapearTipo(v: string): Tipo | "" {
   if (exacto) return exacto;
   if (/pract|intern|trainee|becari/.test(n)) return "Prácticas";
   if (/contrat|freelance/.test(n)) return "Contrato";
-  return "Tiempo completo";
+  if (/completo|full|tiempo/.test(n)) return "Tiempo completo";
+  return ""; // "No indicado" y similares quedan sin tipo
 }
 
 function mapearPrioridad(v: string): number {

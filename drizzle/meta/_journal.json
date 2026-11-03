@@ -15,6 +15,13 @@
       "when": 1793729353072,
       "tag": "0001_historial_descartes",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793731062282,
+      "tag": "0002_huellas_vistas",
+      "breakpoints": true
     }
   ]
 }
