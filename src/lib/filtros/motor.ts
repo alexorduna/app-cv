@@ -110,15 +110,27 @@ export function parsearHoras(texto: string): number | null {
   return null;
 }
 
+const cacheOrden = new WeakMap<ConfigFiltros, [Area, string[]][]>();
+
+/** Listas por área sin las palabras de nivel (calculadas una vez por configuración). */
+function ordenAreas(cfg: ConfigFiltros): [Area, string[]][] {
+  let orden = cacheOrden.get(cfg);
+  if (!orden) {
+    const nivel = new Set(cfg.nivel.map(normalizar));
+    const especificas = (lista: string[]) => lista.filter((p) => !nivel.has(normalizar(p)));
+    orden = [
+      ["Ofensiva", especificas(cfg.ofensiva)],
+      ["Defensiva", especificas(cfg.defensiva)],
+      ["Software", especificas(cfg.software)],
+    ];
+    cacheOrden.set(cfg, orden);
+  }
+  return orden;
+}
+
 export function detectarArea(puesto: string, cfg: ConfigFiltros): { area: Area | ""; palabra: string | null } {
-  const especificas = (lista: string[]) => lista.filter((p) => !cfg.nivel.some((n) => normalizar(n) === normalizar(p)));
-  const orden: [Area, string[]][] = [
-    ["Ofensiva", cfg.ofensiva],
-    ["Defensiva", cfg.defensiva],
-    ["Software", cfg.software],
-  ];
-  for (const [area, lista] of orden) {
-    const p = primeraCoincidencia(puesto, especificas(lista));
+  for (const [area, lista] of ordenAreas(cfg)) {
+    const p = primeraCoincidencia(puesto, lista);
     if (p) return { area, palabra: p };
   }
   return { area: "", palabra: null };
@@ -128,7 +140,8 @@ export const PRIORIDAD_POR_AREA: Record<Area, number> = { Ofensiva: 1, Defensiva
 
 /** Clasifica un fragmento de ubicación. */
 export function clasificarUbicacion(fragmento: string, cfg: ConfigFiltros): Region {
-  const f = fragmento.trim();
+  // "New Mexico" es un estado de EE. UU., no México.
+  const f = fragmento.trim().replace(/\bnew mexico\b/gi, "New-Mex (USA)");
   if (primeraCoincidencia(f, cfg.mexico)) return "México";
   if (primeraCoincidencia(f, cfg.latam)) return "LATAM";
   if (primeraCoincidencia(f, cfg.mundo)) return "Worldwide";

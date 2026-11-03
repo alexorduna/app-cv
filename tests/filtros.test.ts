@@ -64,6 +64,8 @@ describe("ubicación y residencia", () => {
     expect(clasificarUbicacion("Remote - CDMX", cfg)).toBe("México");
     expect(clasificarUbicacion("Remote, Austin, TX", cfg)).toBe("EE. UU.");
     expect(clasificarUbicacion("Remote in Germany", cfg)).toBe("Europa");
+    expect(clasificarUbicacion("Remote - California (USA), New Mexico (USA)", cfg)).toBe("EE. UU.");
+    expect(clasificarUbicacion("Remote - North America, Latin America, Mexico", cfg)).toBe("México");
   });
 });
 

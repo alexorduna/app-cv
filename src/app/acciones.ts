@@ -123,7 +123,7 @@ export async function pegarEnlaceAccion(formData: FormData) {
   );
   refrescar();
   if (r.estado === "duplicada") return { error: "Esa vacante ya estaba registrada." };
-  return { estado: r.estado, motivo: r.evaluacion.motivo };
+  return { estado: r.estado, motivo: r.evaluacion?.motivo ?? "" };
 }
 
 // ---------- Cartas ----------

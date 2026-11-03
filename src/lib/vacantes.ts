@@ -9,7 +9,8 @@ import { evaluar, type Candidata, type ConfigFiltros, type Evaluacion } from "./
 export interface ResultadoIngreso {
   estado: "nueva" | "descartada" | "duplicada";
   id?: number;
-  evaluacion: Evaluacion;
+  /** Solo se calcula para vacantes nuevas (las duplicadas no se vuelven a evaluar). */
+  evaluacion?: Evaluacion;
 }
 
 /**
@@ -18,10 +19,10 @@ export interface ResultadoIngreso {
  * En ambos casos queda fuera del tablero (en_tablero = 0) hasta que Alex la acepte.
  */
 export function ingresarCandidata(db: DB, c: Candidata, plataforma: string, cfg: ConfigFiltros): ResultadoIngreso {
-  const ev = evaluar(c, cfg);
   const huella = calcularHuella(c.enlace ?? "", c.empresa, c.puesto);
   const existente = db.select({ id: vacantes.id }).from(vacantes).where(eq(vacantes.huella, huella)).get();
-  if (existente) return { estado: "duplicada", id: existente.id, evaluacion: ev };
+  if (existente) return { estado: "duplicada", id: existente.id };
+  const ev = evaluar(c, cfg);
 
   const ahora = ahoraISO();
   const fila: NuevaVacante = {
@@ -46,7 +47,8 @@ export function ingresarCandidata(db: DB, c: Candidata, plataforma: string, cfg:
     actualizada: ahora,
   };
   const res = db.insert(vacantes).values(fila).returning({ id: vacantes.id }).get();
-  registrar(db, "vacante", res.id, ev.pasa ? "nueva" : "descartada_auto", ev.pasa ? plataforma : ev.motivo);
+  // Las descartadas automáticas no llenan el historial: su motivo ya queda en la fila.
+  if (ev.pasa) registrar(db, "vacante", res.id, "nueva", plataforma);
   return { estado: ev.pasa ? "nueva" : "descartada", id: res.id, evaluacion: ev };
 }
 

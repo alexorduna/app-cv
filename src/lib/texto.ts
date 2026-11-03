@@ -14,25 +14,32 @@ function escaparRegex(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-const cacheRegex = new Map<string, RegExp>();
+const cacheRegex = new Map<string, RegExp | null>();
+
+function regexFrase(frase: string): RegExp | null {
+  let re = cacheRegex.get(frase);
+  if (re === undefined) {
+    const f = normalizar(frase);
+    // Espacios y guiones en la frase aceptan espacio o guion en el texto.
+    re = f ? new RegExp(`(?<![a-z0-9])${escaparRegex(f).replace(/(\\-| )/g, "[\\s-]?")}(?![a-z0-9])`) : null;
+    cacheRegex.set(frase, re);
+  }
+  return re;
+}
 
 /** ¿Contiene `frase` como palabra(s) completa(s)? Ignora mayúsculas y acentos. */
 export function contieneFrase(texto: string, frase: string): boolean {
-  const f = normalizar(frase);
-  if (!f) return false;
-  let re = cacheRegex.get(f);
-  if (!re) {
-    // Espacios y guiones en la frase aceptan espacio o guion en el texto.
-    const patron = escaparRegex(f).replace(/(\\-| )/g, "[\\s-]?");
-    re = new RegExp(`(?<![a-z0-9])${patron}(?![a-z0-9])`, "i");
-    cacheRegex.set(f, re);
-  }
-  return re.test(normalizar(texto));
+  const re = regexFrase(frase);
+  return !!re && re.test(normalizar(texto));
 }
 
-/** Devuelve la primera frase de la lista que aparece en el texto, o null. */
+/** Devuelve la primera frase de la lista que aparece en el texto, o null. Normaliza el texto una sola vez. */
 export function primeraCoincidencia(texto: string, frases: string[]): string | null {
-  for (const f of frases) if (contieneFrase(texto, f)) return f;
+  const t = normalizar(texto);
+  for (const f of frases) {
+    const re = regexFrase(f);
+    if (re && re.test(t)) return f;
+  }
   return null;
 }
 

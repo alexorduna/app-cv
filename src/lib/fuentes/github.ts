@@ -50,7 +50,10 @@ async function apiGithub(http: ClienteHttp, ruta: string, accept = "application/
     return r;
   } catch (e) {
     if (e instanceof ErrorHttp && (e.estado === 403 || e.estado === 429)) {
-      const reset = Number(e.respuesta?.headers.get("x-ratelimit-reset") ?? 0) * 1000;
+      const h = e.respuesta?.headers;
+      const agotado = e.estado === 429 || h?.get("x-ratelimit-remaining") === "0" || h?.has("retry-after");
+      if (!agotado) throw new Error(`GitHub rechazó la petición (HTTP ${e.estado}). ¿Repo privado o red que bloquea api.github.com?`);
+      const reset = Number(h?.get("x-ratelimit-reset") ?? 0) * 1000;
       throw new Error(`GitHub limitó las peticiones (HTTP ${e.estado}).${reset ? ` Intenta después de ${new Date(reset).toLocaleTimeString("es-MX")}.` : ""}`);
     }
     throw e;
