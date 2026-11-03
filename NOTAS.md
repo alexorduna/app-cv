@@ -19,6 +19,7 @@ Decisiones tomadas eligiendo la opción más simple cuando había dudas. Todas s
 - Europa (incluye "Remote in Germany", EMEA, EU) **no** se descarta: pasa con aviso "confirma que no exija residencia, que el sueldo sea bueno y que puedas empezar de inmediato". Solo se descarta si el texto dice explícitamente "EU residents only", "must reside in the EU", "right to work in the EU", etc.
 - Si la ubicación es restringida pero el texto menciona contractor, independent contractor, employer of record, EOR o B2B, pasa con aviso.
 - "Remote" sin país pasa (región "Remoto sin especificar").
+- LATAM con país concreto ("Remote - Brazil", "Remote in Colombia") **pasa siempre que sea 100% remota** (decisión de Alex). Si dice híbrida, presencial o no menciona remoto, se descarta.
 - "North America" y "Americas" se tratan distinto: "Americas" está en LATAM (incluye México); "North America" sola se descarta como otro país salvo que también diga México o LATAM.
 - Las exclusiones (UI/UX, sales, recruiter, hybrid…) se buscan solo en título y ubicación, no en la descripción, para evitar falsos positivos ("hybrid cloud", "work with the sales team").
 - Residencia, permiso de trabajo, clearance y ciudadanía sí se buscan en la descripción completa.

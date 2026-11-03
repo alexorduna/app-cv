@@ -37,6 +37,14 @@ describe("ubicación y residencia", () => {
     expect(evaluar({ ...base, puesto: "Security Analyst", ubicacion: "Remote - UK" }).motivo).toMatch(/Reino Unido/);
     expect(evaluar({ ...base, puesto: "Security Analyst", ubicacion: "Remote in Canada" }).pasa).toBe(false);
   });
+  it("LATAM con país concreto pasa solo si es 100% remota (decisión de Alex)", () => {
+    for (const u of ["Remote - Brazil", "Remote in Colombia", "Remote, Argentina", "Chile (Remote)"]) {
+      expect(evaluar({ ...base, puesto: "Security Analyst", ubicacion: u }).pasa, u).toBe(true);
+    }
+    expect(evaluar({ ...base, puesto: "Security Analyst", ubicacion: "Hybrid - São Paulo, Brazil" }).pasa).toBe(false);
+    expect(evaluar({ ...base, puesto: "Security Analyst", ubicacion: "Bogotá, Colombia" }).pasa).toBe(false);
+    expect(evaluar({ ...base, puesto: "Security Analyst", ubicacion: "Remote - Brazil", remoto: false }).pasa).toBe(false);
+  });
   it("acepta si alguna de varias ubicaciones es válida", () => {
     expect(evaluar({ ...base, puesto: "Backend Engineer", ubicacion: "Remote in USA; Remote - Mexico" }).pasa).toBe(true);
   });
