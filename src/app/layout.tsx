@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Navegacion } from "@/components/Navegacion";
 import { BotonTema, scriptTema } from "@/components/Tema";
-import { getDb } from "@/db";
+import { leerDb } from "@/db/servidor";
 import { listarNuevas } from "@/lib/vacantes";
 
 export const metadata: Metadata = {
@@ -12,8 +12,9 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const nuevas = listarNuevas(getDb()).length;
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const db = await leerDb();
+  const nuevas = listarNuevas(db).length;
   return (
     <html lang="es" suppressHydrationWarning>
       <head>

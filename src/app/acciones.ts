@@ -5,7 +5,7 @@
  */
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
-import { getDb } from "@/db";
+import { guardar, obtenerDb } from "@/db/almacen";
 import { ESTADOS, ESTADOS_RESPUESTA, bancoRespuestas, listasGithub, type Estado, type EstadoRespuesta } from "@/db/schema";
 import { extraerVacantesDeAlerta } from "@/lib/alertas";
 import { buscarVacantes, ingresarLote, type ResultadoFuente } from "@/lib/buscar";
@@ -22,6 +22,7 @@ import {
   aceptarNuevas, actualizarCampos, cambiarEstado, descartarVarias, ingresarCandidata, rescatarDescartada, restaurarDescartada,
 } from "@/lib/vacantes";
 
+/** Revalida las páginas después de guardar (en modo Sheet, guardar() ya escribió en Google). */
 function refrescar() {
   revalidatePath("/", "layout");
 }
@@ -29,17 +30,22 @@ function refrescar() {
 // ---------- Vacantes ----------
 
 export async function cambiarEstadoAccion(id: number, estado: Estado, motivo?: string) {
+  const db = await obtenerDb();
   if (!ESTADOS.includes(estado)) throw new Error("Estado inválido");
-  cambiarEstado(getDb(), id, estado, { motivo });
+  cambiarEstado(db, id, estado, { motivo });
+  await guardar(db);
   refrescar();
 }
 
 export async function marcarAplicadaAccion(id: number) {
-  cambiarEstado(getDb(), id, "Aplicada", { fecha: hoyISO() });
+  const db = await obtenerDb();
+  cambiarEstado(db, id, "Aplicada", { fecha: hoyISO() });
+  await guardar(db);
   refrescar();
 }
 
 export async function guardarVacanteAccion(id: number, formData: FormData) {
+  const db = await obtenerDb();
   const campos: Record<string, string | number | null> = {};
   for (const k of ["empresa", "puesto", "area", "plataforma", "region", "tipo", "horasPorDia", "salario", "enlace", "siguientePaso", "versionCv", "notas", "motivoDescarte"]) {
     const v = formData.get(k);
@@ -51,41 +57,53 @@ export async function guardarVacanteAccion(id: number, formData: FormData) {
   }
   const p = Number(formData.get("prioridad"));
   if (p >= 1 && p <= 3) campos.prioridad = p;
-  actualizarCampos(getDb(), id, campos);
+  actualizarCampos(db, id, campos);
+  await guardar(db);
   refrescar();
 }
 
 export async function aceptarNuevasAccion(ids: number[]) {
-  aceptarNuevas(getDb(), ids);
+  const db = await obtenerDb();
+  aceptarNuevas(db, ids);
+  await guardar(db);
   refrescar();
 }
 
 export async function descartarNuevasAccion(ids: number[], motivo: string) {
-  descartarVarias(getDb(), ids, motivo || "Descartada en lote desde Nuevas");
+  const db = await obtenerDb();
+  descartarVarias(db, ids, motivo || "Descartada en lote desde Nuevas");
+  await guardar(db);
   refrescar();
 }
 
 export async function rescatarAccion(id: number) {
-  rescatarDescartada(getDb(), id);
+  const db = await obtenerDb();
+  rescatarDescartada(db, id);
+  await guardar(db);
   refrescar();
 }
 
 export async function restaurarAccion(id: number) {
-  restaurarDescartada(getDb(), id);
+  const db = await obtenerDb();
+  restaurarDescartada(db, id);
+  await guardar(db);
   refrescar();
 }
 
 // ---------- Búsqueda ----------
 
 export async function buscarAhoraAccion(soloFuente?: string): Promise<ResultadoFuente[]> {
-  const r = await buscarVacantes(getDb(), soloFuente ? { soloFuentes: [soloFuente] } : {});
+  const db = await obtenerDb();
+  const r = await buscarVacantes(db, soloFuente ? { soloFuentes: [soloFuente] } : {});
+  await guardar(db);
   refrescar();
   return r;
 }
 
 export async function previsualizarAlertaAccion(texto: string) {
+  const db = await obtenerDb();
   const { plataforma, vacantes } = extraerVacantesDeAlerta(texto);
-  const cfg = leerConfigFiltros(getDb());
+  const cfg = leerConfigFiltros(db);
   return {
     plataforma,
     vacantes: vacantes.map((v) => {
@@ -96,15 +114,16 @@ export async function previsualizarAlertaAccion(texto: string) {
 }
 
 export async function ingresarAlertaAccion(texto: string) {
-  const db = getDb();
+  const db = await obtenerDb();
   const { plataforma, vacantes } = extraerVacantesDeAlerta(texto);
   const r = ingresarLote(db, vacantes, `${plataforma} (alerta)`, leerConfigFiltros(db));
+  await guardar(db);
   refrescar();
   return { ...r, total: vacantes.length };
 }
 
 export async function pegarEnlaceAccion(formData: FormData) {
-  const db = getDb();
+  const db = await obtenerDb();
   const enlace = String(formData.get("enlace") ?? "").trim();
   const puesto = String(formData.get("puesto") ?? "").trim();
   const empresa = String(formData.get("empresa") ?? "").trim();
@@ -126,6 +145,7 @@ export async function pegarEnlaceAccion(formData: FormData) {
     plataforma,
     leerConfigFiltros(db),
   );
+  await guardar(db);
   refrescar();
   if (r.estado === "duplicada") return { error: "Esa vacante ya estaba registrada." };
   return { estado: r.estado, motivo: r.evaluacion?.motivo ?? "" };
@@ -134,9 +154,11 @@ export async function pegarEnlaceAccion(formData: FormData) {
 // ---------- Cartas ----------
 
 export async function generarCartaAccion(vacanteId: number): Promise<{ error?: string }> {
+  const db = await obtenerDb();
   try {
-    await generarBorrador(getDb(), vacanteId);
-    refrescar();
+    await generarBorrador(db, vacanteId);
+    await guardar(db);
+  refrescar();
     return {};
   } catch (e) {
     return { error: (e as Error).message };
@@ -144,14 +166,17 @@ export async function generarCartaAccion(vacanteId: number): Promise<{ error?: s
 }
 
 export async function guardarCartaAccion(id: number, texto: string) {
-  editarCarta(getDb(), id, texto);
+  const db = await obtenerDb();
+  editarCarta(db, id, texto);
+  await guardar(db);
   refrescar();
 }
 
 export async function aprobarCartaAccion(id: number, texto: string): Promise<Revision> {
-  const db = getDb();
+  const db = await obtenerDb();
   editarCarta(db, id, texto);
   const r = aprobarCarta(db, id);
+  await guardar(db);
   refrescar();
   return r;
 }
@@ -159,7 +184,7 @@ export async function aprobarCartaAccion(id: number, texto: string): Promise<Rev
 // ---------- Banco de respuestas ----------
 
 export async function guardarRespuestaAccion(formData: FormData) {
-  const db = getDb();
+  const db = await obtenerDb();
   const id = Number(formData.get("id") || 0);
   const pregunta = String(formData.get("pregunta") ?? "").trim();
   const categoria = String(formData.get("categoria") ?? "").trim();
@@ -175,11 +200,14 @@ export async function guardarRespuestaAccion(formData: FormData) {
   if (id) db.update(bancoRespuestas).set({ pregunta, categoria, respuesta, estado, actualizado: ahoraISO() }).where(eq(bancoRespuestas.id, id)).run();
   else db.insert(bancoRespuestas).values({ pregunta, categoria, respuesta, estado, actualizado: ahoraISO() }).onConflictDoNothing().run();
   registrar(db, "banco", id || pregunta, id ? "editada" : "creada");
+  await guardar(db);
   refrescar();
 }
 
 export async function borrarRespuestaAccion(id: number) {
-  getDb().delete(bancoRespuestas).where(eq(bancoRespuestas.id, id)).run();
+  const db = await obtenerDb();
+  db.delete(bancoRespuestas).where(eq(bancoRespuestas.id, id)).run();
+  await guardar(db);
   refrescar();
 }
 
@@ -188,7 +216,7 @@ export async function borrarRespuestaAccion(id: number) {
 const CLAVES_EDITABLES = new Set(Object.keys(FILTROS_SEMILLA));
 
 export async function guardarFiltrosAccion(formData: FormData) {
-  const db = getDb();
+  const db = await obtenerDb();
   for (const [k, v] of formData.entries()) {
     if (!CLAVES_EDITABLES.has(k) || typeof v !== "string") continue;
     if (/salari|sueldo/i.test(k)) continue;
@@ -201,36 +229,45 @@ export async function guardarFiltrosAccion(formData: FormData) {
     }
   }
   registrar(db, "filtros", "", "guardados");
+  await guardar(db);
   refrescar();
 }
 
 export async function restaurarFiltroAccion(clave: string) {
-  if (CLAVES_EDITABLES.has(clave)) guardarFiltro(getDb(), clave, FILTROS_SEMILLA[clave]);
+  const db = await obtenerDb();
+  if (CLAVES_EDITABLES.has(clave)) guardarFiltro(db, clave, FILTROS_SEMILLA[clave]);
+  await guardar(db);
   refrescar();
 }
 
 export async function agregarListaAccion(formData: FormData): Promise<{ error?: string }> {
+  const db = await obtenerDb();
   const repo = normalizarRepo(String(formData.get("repo") ?? ""));
   if (!repo) return { error: "Escribe el repo como owner/nombre o https://github.com/owner/nombre" };
   const rama = String(formData.get("rama") ?? "").trim();
   const formato = formData.get("formato") === "enlaces" ? "enlaces" : "auto";
-  getDb().insert(listasGithub).values({ repo, rama, formato, activa: 1 }).onConflictDoUpdate({ target: listasGithub.repo, set: { rama, formato, activa: 1 } }).run();
+  db.insert(listasGithub).values({ repo, rama, formato, activa: 1 }).onConflictDoUpdate({ target: listasGithub.repo, set: { rama, formato, activa: 1 } }).run();
+  await guardar(db);
   refrescar();
   return {};
 }
 
 export async function actualizarListaAccion(id: number, cambios: { rama?: string; formato?: string; activa?: number; reiniciarSha?: boolean }) {
+  const db = await obtenerDb();
   const set: Record<string, unknown> = {};
   if (cambios.rama !== undefined) set.rama = cambios.rama.trim();
   if (cambios.formato !== undefined) set.formato = cambios.formato === "enlaces" ? "enlaces" : "auto";
   if (cambios.activa !== undefined) set.activa = cambios.activa ? 1 : 0;
   if (cambios.reiniciarSha) set.ultimoSha = null;
   if (cambios.activa) set.ultimoError = null;
-  getDb().update(listasGithub).set(set).where(eq(listasGithub.id, id)).run();
+  db.update(listasGithub).set(set).where(eq(listasGithub.id, id)).run();
+  await guardar(db);
   refrescar();
 }
 
 export async function borrarListaAccion(id: number) {
-  getDb().delete(listasGithub).where(eq(listasGithub.id, id)).run();
+  const db = await obtenerDb();
+  db.delete(listasGithub).where(eq(listasGithub.id, id)).run();
+  await guardar(db);
   refrescar();
 }

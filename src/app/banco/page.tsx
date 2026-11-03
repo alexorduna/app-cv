@@ -1,4 +1,4 @@
-import { getDb } from "@/db";
+import { leerDb } from "@/db/servidor";
 import { ESTADOS_RESPUESTA, bancoRespuestas } from "@/db/schema";
 import { borrarRespuestaAccion, guardarRespuestaAccion } from "@/app/acciones";
 
@@ -29,8 +29,9 @@ function Formulario({ r }: { r?: { id: number; categoria: string; pregunta: stri
   );
 }
 
-export default function PaginaBanco() {
-  const filas = getDb().select().from(bancoRespuestas).orderBy(bancoRespuestas.categoria, bancoRespuestas.id).all();
+export default async function PaginaBanco() {
+  const db = await leerDb();
+  const filas = db.select().from(bancoRespuestas).orderBy(bancoRespuestas.categoria, bancoRespuestas.id).all();
   return (
     <div className="flex max-w-5xl flex-col gap-4">
       <div>

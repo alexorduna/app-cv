@@ -1,11 +1,12 @@
-import { getDb } from "@/db";
+import { leerDb } from "@/db/servidor";
 import { Historial } from "@/components/Historial";
 import { listarHistorialDescartes } from "@/lib/vacantes";
 
 export const dynamic = "force-dynamic";
 
-export default function PaginaHistorial() {
-  const filas = listarHistorialDescartes(getDb());
+export default async function PaginaHistorial() {
+  const db = await leerDb();
+  const filas = listarHistorialDescartes(db);
   return (
     <div className="flex max-w-5xl flex-col gap-4">
       <div>

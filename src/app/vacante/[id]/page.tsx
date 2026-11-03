@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, desc, eq } from "drizzle-orm";
-import { getDb } from "@/db";
+import { leerDb } from "@/db/servidor";
 import { AREAS, TIPOS, actividad } from "@/db/schema";
 import { guardarVacanteAccion } from "@/app/acciones";
 import { AccionesVacante } from "@/components/AccionesVacante";
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 export default async function PaginaVacante({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const db = getDb();
+  const db = await leerDb();
   const v = obtenerVacante(db, Number(id));
   if (!v) notFound();
   const ats = detectarAts(v.enlace);

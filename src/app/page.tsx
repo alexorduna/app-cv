@@ -1,4 +1,4 @@
-import { getDb } from "@/db";
+import { leerDb } from "@/db/servidor";
 import { Tablero } from "@/components/Tablero";
 import { calcularResumen, listarVacantes } from "@/lib/vacantes";
 
@@ -14,8 +14,9 @@ function Dato({ titulo, valor, detalle }: { titulo: string; valor: string | numb
   );
 }
 
-export default function PaginaTablero() {
-  const filas = listarVacantes(getDb());
+export default async function PaginaTablero() {
+  const db = await leerDb();
+  const filas = listarVacantes(db);
   const r = calcularResumen(filas);
   return (
     <div className="flex flex-col gap-4">

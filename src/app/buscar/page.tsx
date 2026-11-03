@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getDb } from "@/db";
+import { leerDb } from "@/db/servidor";
 import { ejecucionesFuentes } from "@/db/schema";
 import { BandejaNuevas, BotonBuscar, ListaDescartadas, PegarAlerta, PegarEnlace } from "@/components/Buscar";
 import { FUENTES } from "@/lib/fuentes";
@@ -18,7 +18,7 @@ const PESTANAS = [
 
 export default async function PaginaBuscar({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab = "nuevas" } = await searchParams;
-  const db = getDb();
+  const db = await leerDb();
   const nuevas = listarNuevas(db);
   const valores = leerFiltros(db);
   const ejecuciones = new Map(db.select().from(ejecucionesFuentes).all().map((e) => [e.fuente, e]));
@@ -46,7 +46,24 @@ export default async function PaginaBuscar({ searchParams }: { searchParams: Pro
 
       {tab === "fuentes" && (
         <div className="flex flex-col gap-4">
-          <BotonBuscar hayActivas={activas.length > 0} />
+          {process.env.CHAMBA_BUSQUEDA_EXTERNA === "1" ? (
+            <div className="aviso flex flex-col gap-1">
+              <div>
+                En línea, la búsqueda corre sola en GitHub Actions cada 6 horas y guarda los resultados en tu Google Sheet
+                (en Netlify se cortaría a los pocos segundos).
+              </div>
+              <a
+                className="enlace w-fit font-medium"
+                href={`https://github.com/${process.env.CHAMBA_REPO_GITHUB || "alexorduna/app-cv"}/actions/workflows/buscar.yml`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Correr la búsqueda ahora en GitHub (botón &quot;Run workflow&quot;) ↗
+              </a>
+            </div>
+          ) : (
+            <BotonBuscar hayActivas={activas.length > 0} />
+          )}
           <div className="tarjeta p-0">
             <table className="w-full text-sm">
               <thead className="border-b border-zinc-200 text-left text-xs text-zinc-500 dark:border-zinc-800">

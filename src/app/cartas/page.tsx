@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getDb } from "@/db";
+import { leerDb } from "@/db/servidor";
 import { EditorCarta } from "@/components/EditorCarta";
 import { Prioridad, TextoArea } from "@/components/ui";
 import { cartasDe, revisar } from "@/lib/cartas";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function PaginaCartas({ searchParams }: { searchParams: Promise<{ vacante?: string }> }) {
   const { vacante } = await searchParams;
-  const db = getDb();
+  const db = await leerDb();
   const lista = listarVacantes(db).filter((v) => v.estado !== "Descartada");
   const conCartas = new Map(lista.map((v) => [v.id, cartasDe(db, v.id)]));
   const elegida = vacante ? obtenerVacante(db, Number(vacante)) : lista.find((v) => v.estado === "Lista para aplicar") ?? lista[0];

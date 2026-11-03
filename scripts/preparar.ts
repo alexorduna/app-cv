@@ -9,8 +9,21 @@ import { vacantes } from "../src/db/schema";
 import { sembrarFiltros } from "../src/lib/filtros/repo";
 import { sembrarListas } from "../src/lib/fuentes/github";
 import { hayCsvParaImportar, importarCarpeta } from "../src/lib/importacion";
+import { modoAlmacen, obtenerDb } from "../src/db/almacen";
 
 cargarEnv();
+
+if (modoAlmacen() === "sheets") {
+  // El Google Sheet es la base de datos: solo se revisa la conexión y se crean las pestañas que falten.
+  obtenerDb()
+    .then(() => console.log("✔ Conectado a tu Google Sheet; pestañas y columnas de Chamba listas (tus datos no se tocaron)."))
+    .catch((e) => {
+      console.error(`✖ No pude usar el Google Sheet: ${(e as Error).message}`);
+      process.exit(1);
+    });
+} else prepararLocal();
+
+function prepararLocal() {
 const ruta = rutaBaseDatos();
 const db = abrirBaseDatos(ruta);
 console.log(`✔ Base de datos lista y migrada: ${path.relative(process.cwd(), ruta)}`);
@@ -32,3 +45,4 @@ if (hayCsvParaImportar(carpetaImport)) {
   console.log("ℹ No hay CSV en data/import/ y la base ya tiene datos: no se cambió nada.");
 }
 db.$client.close();
+}

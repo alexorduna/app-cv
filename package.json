@@ -18,7 +18,8 @@
     "db:generate": "drizzle-kit generate",
     "import": "tsx scripts/importar.ts",
     "export": "tsx scripts/exportar.ts",
-    "seed": "tsx scripts/semilla.ts"
+    "seed": "tsx scripts/semilla.ts",
+    "buscar": "tsx scripts/buscar.ts"
   },
   "dependencies": {
     "better-sqlite3": "12.11.1",

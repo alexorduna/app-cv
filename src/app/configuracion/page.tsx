@@ -1,10 +1,11 @@
-import { getDb } from "@/db";
+import { leerDb } from "@/db/servidor";
 import { listasGithub } from "@/db/schema";
 import { guardarFiltrosAccion } from "@/app/acciones";
 import { ListasGithub } from "@/components/ListasGithub";
 import { FUENTES } from "@/lib/fuentes";
 import { configIA } from "@/lib/cartas/proveedores";
 import { leerFiltros } from "@/lib/filtros/repo";
+import { modoAlmacen } from "@/db/almacen";
 
 export const dynamic = "force-dynamic";
 
@@ -34,8 +35,8 @@ function Area({ name, label, valor, filas = 2 }: { name: string; label: string; 
   );
 }
 
-export default function PaginaConfiguracion() {
-  const db = getDb();
+export default async function PaginaConfiguracion() {
+  const db = await leerDb();
   const v = leerFiltros(db);
   const ia = configIA(v);
   const hayKey = !!process.env.ANTHROPIC_API_KEY;
@@ -45,7 +46,12 @@ export default function PaginaConfiguracion() {
     <div className="flex max-w-5xl flex-col gap-5">
       <div>
         <h1 className="titulo">Configuración</h1>
-        <p className="subtitulo">Filtros, palabras clave, fuentes y proveedor de IA. Todo se guarda solo en tu base local.</p>
+        <p className="subtitulo">
+          Filtros, palabras clave, fuentes y proveedor de IA.{" "}
+          {modoAlmacen() === "sheets"
+            ? "Todo se guarda en tu Google Sheet (pestañas ocultas que empiezan con \"_\")."
+            : "Todo se guarda en tu base local (data/chamba.db)."}
+        </p>
       </div>
 
       <form action={guardarFiltrosAccion} className="flex flex-col gap-5">

@@ -6,6 +6,10 @@ import { sembrarFiltros } from "../src/lib/filtros/repo";
 import { hayCsvParaImportar, importarCarpeta } from "../src/lib/importacion";
 
 cargarEnv();
+if (process.env.GOOGLE_SHEET_ID) {
+  console.log("ℹ Estás en modo Google Sheet: tus datos ya viven en el Sheet, no hace falta importar CSV.");
+  process.exit(0);
+}
 const carpeta = path.resolve(process.argv[2] ?? "data/import");
 if (!hayCsvParaImportar(carpeta)) {
   console.error(`No encontré seguimiento.csv, banco_respuestas.csv ni filtros.csv en ${carpeta}`);

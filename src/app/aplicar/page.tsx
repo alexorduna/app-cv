@@ -1,4 +1,4 @@
-import { getDb } from "@/db";
+import { leerDb } from "@/db/servidor";
 import { bancoRespuestas } from "@/db/schema";
 import { Aplicar, type ItemCola } from "@/components/Aplicar";
 import { detectarAts } from "@/lib/ats";
@@ -7,8 +7,8 @@ import { colaParaAplicar } from "@/lib/vacantes";
 
 export const dynamic = "force-dynamic";
 
-export default function PaginaAplicar() {
-  const db = getDb();
+export default async function PaginaAplicar() {
+  const db = await leerDb();
   const cola: ItemCola[] = colaParaAplicar(db).map((v) => ({
     vacante: v,
     ats: detectarAts(v.enlace),
