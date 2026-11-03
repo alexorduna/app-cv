@@ -187,17 +187,17 @@ export function evaluar(c: Candidata, cfg: ConfigFiltros = CONFIG_POR_DEFECTO): 
   if (c.marcas?.cerrada) return descartar("Cerrada (🔒)");
   if (c.marcas?.ciudadania) return descartar("Exige ciudadanía de EE. UU. (🇺🇸)");
 
-  // 2. Palabras excluidas en título o ubicación
-  const excluida = primeraCoincidencia(`${titulo}\n${ubicacion}`, cfg.excluir);
-  if (excluida) return descartar(`Palabra excluida: "${excluida}"`);
-
-  // 3. Remoto total
+  // 2. Remoto total
   const noRemoto = primeraCoincidencia(`${titulo}\n${ubicacion}`, PALABRAS_NO_REMOTO);
   if (noRemoto) return descartar(`Híbrida o presencial ("${noRemoto}")`);
   if (c.remoto === false) return descartar("No es remota");
   if (c.remoto === undefined && !primeraCoincidencia(`${ubicacion}\n${titulo}`, PALABRAS_REMOTO)) {
     return descartar("No indica que sea 100% remota");
   }
+
+  // 3. Palabras excluidas en título o ubicación
+  const excluida = primeraCoincidencia(`${titulo}\n${ubicacion}`, cfg.excluir);
+  if (excluida) return descartar(`Palabra excluida: "${excluida}"`);
 
   // 4. Restricciones legales en cualquier parte del texto
   const ciudadania = primeraCoincidencia(textoCompleto, cfg.bloqueoCiudadania);
