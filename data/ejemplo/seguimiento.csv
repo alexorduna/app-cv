@@ -1,0 +1,9 @@
+ID,Fecha encontrada,Empresa,Puesto,Área,Plataforma,Región,Tipo,Horas por día,Salario,Enlace para aplicar,Prioridad,Estado,Fecha de aplicación,Fecha de seguimiento,Siguiente paso,Versión de CV
+1,2026-10-01,Ejemplo Seguridad S.A.,Junior Penetration Tester,Ofensiva,Greenhouse,LATAM,Tiempo completo,8,No publicado,https://boards.greenhouse.io/ejemplo-seguridad/jobs/1001,1,Lista para aplicar,,,Preparar carta,CV-ofensiva-v1
+2,2026-10-02,Ficticia Labs,Red Team Intern,Ofensiva,Lever,Worldwide,Prácticas,6,,https://jobs.lever.co/ficticia-labs/a1b2c3,1,Lista para aplicar,,,,CV-ofensiva-v1
+3,2026-10-03,Demo Defensa Inc.,SOC Analyst I,Defensiva,Ashby,México,Tiempo completo,8,USD 1500-2000 / mes,https://jobs.ashbyhq.com/demo-defensa/123e4567,2,Aplicada,2026-10-05,2026-10-15,Esperar respuesta,CV-defensiva-v2
+4,2026-10-04,Inventada Cloud,Backend Engineer (Python),Software,Get on Board,LATAM,Tiempo completo,8,,https://www.getonbrd.com/jobs/programming/backend-engineer-inventada-cloud-remote,3,Entrevista,2026-10-06,2026-10-20,Entrevista técnica el lunes,CV-software-v1
+5,2026-10-05,Muestra Security,Security Analyst (Incident Response),Defensiva,Workable,Worldwide,Tiempo completo,8,,https://apply.workable.com/muestra-security/j/ABC123/,2,Respuesta recibida,2026-10-07,2026-10-14,Agendar llamada,CV-defensiva-v2
+6,2026-10-06,Prueba Hackers,Application Security Engineer,Ofensiva,LinkedIn,Remoto sin especificar,Tiempo completo,8,,https://www.linkedin.com/jobs/view/0000000001,1,Por revisar,,,,
+7,2026-10-07,Simulada DevOps,Junior DevOps Engineer,Software,Wellfound,Europa,Tiempo completo,8,EUR 30k,https://wellfound.com/jobs/0000001-junior-devops-engineer,3,Prueba técnica,2026-10-08,2026-10-18,Entregar reto,CV-software-v1
+8,2026-10-08,Ejemplar Corp,GRC Analyst,Defensiva,Handshake,LATAM,Contrato,8,,https://app.joinhandshake.com/jobs/00000001,2,Descartada,,,,
