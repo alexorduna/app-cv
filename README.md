@@ -101,7 +101,7 @@ Opcional. En tu laptop la app usa `data/chamba.db`. Si defines `GOOGLE_SHEET_ID`
 - En cada pantalla la app lee el Sheet y, al guardar, escribe **solo las celdas que cambiaron**. No toca tus fórmulas, tus listas desplegables ni las pestañas Inicio, Resumen y Filtros.
 - `Seguimiento` = tablero. `Nuevas` = bandeja por revisar. Se agregan las columnas "Motivo de descarte" (visible) y algunas técnicas ocultas al final.
 - Pestañas técnicas ocultas (empiezan con `_`): configuración, cartas, listas de GitHub, descartadas por filtros (las últimas 500), historial de actividad y huellas ya vistas.
-- La búsqueda corre en **GitHub Actions** cada 6 horas (`.github/workflows/buscar.yml`), porque Netlify corta las funciones a los pocos segundos.
+- La búsqueda no corre dentro de Netlify (las funciones se cortan a los pocos segundos). Corre en tu laptop con un timer de systemd: ver "Búsqueda automática sin GitHub Actions".
 - Ollama no está disponible en línea: para cartas usa `mock` o Anthropic.
 
 **Configuración (una vez):**
@@ -113,9 +113,58 @@ Opcional. En tu laptop la app usa `data/chamba.db`. Si defines `GOOGLE_SHEET_ID`
    - `GOOGLE_SERVICE_ACCOUNT_JSON`: el contenido completo del JSON (sin base64; Netlify limita el total de variables a 4 KB)
    - `CHAMBA_CLAVE`: tu contraseña para entrar al sitio (usuario `alex`, o define `CHAMBA_USUARIO`)
    - `CHAMBA_BUSQUEDA_EXTERNA` = `1`
-4. GitHub: en *Settings → Secrets and variables → Actions* agrega `GOOGLE_SHEET_ID` y `GOOGLE_SERVICE_ACCOUNT_JSON`.
+4. Búsqueda automática: en tu laptop, ver "Búsqueda automática sin GitHub Actions". (GitHub Actions queda opcional, solo si tu cuenta lo permite sin tarjeta.)
 
 Para usar el Sheet también desde tu laptop, pon esas mismas variables en `.env` (puedes usar `GOOGLE_SERVICE_ACCOUNT_FILE=/ruta/a/la/llave.json`). La llave nunca va en el repo: `.gitignore` la excluye.
+
+## Búsqueda automática sin GitHub Actions
+
+Corre `npm run buscar` en tu laptop cada 6 horas con un timer de systemd (usuario, sin sudo) y guarda en tu Google Sheet. Gratis y sin tarjeta.
+
+1. Guarda la llave JSON de la cuenta de servicio **fuera del repo**, por ejemplo en `~/.config/chamba/llave.json`:
+   ```bash
+   mkdir -p ~/.config/chamba && chmod 700 ~/.config/chamba
+   ```
+   ```bash
+   chmod 600 ~/.config/chamba/llave.json
+   ```
+2. Crea `~/.config/chamba/env` (también fuera del repo) con:
+   ```
+   GOOGLE_SHEET_ID=https://docs.google.com/spreadsheets/d/<ID-de-tu-Sheet>/edit
+   GOOGLE_SERVICE_ACCOUNT_FILE=/home/<tu-usuario>/.config/chamba/llave.json
+   ```
+   ```bash
+   chmod 600 ~/.config/chamba/env
+   ```
+   Si tu Node viene de nvm y systemd no lo encuentra, agrega `NODE_BIN=/ruta/a/node`.
+3. Pruébalo una vez a mano (desde la carpeta del repo):
+   ```bash
+   ./scripts/buscar-local.sh
+   ```
+4. Instala el timer (copia las unidades de `systemd/` a `~/.config/systemd/user/` con la ruta de tu repo y las activa):
+   ```bash
+   ./scripts/instalar-timer.sh
+   ```
+   Equivale a copiar las unidades y correr:
+   ```bash
+   systemctl --user enable --now chamba-buscar.timer
+   ```
+5. Revisa el próximo disparo y el log:
+   ```bash
+   systemctl --user list-timers chamba-buscar.timer
+   ```
+   ```bash
+   tail -n 50 ~/.local/state/chamba/buscar.log
+   ```
+
+Detalles:
+
+- Corre a las 00:17, 06:17, 12:17 y 18:17 (hora local). Con `Persistent=true`, si la laptop estaba apagada, corre al encenderla.
+- Los timers de usuario corren mientras tu sesión está abierta. Para que corran aunque no hayas iniciado sesión (laptop encendida): `loginctl enable-linger "$USER"`.
+- El script nunca imprime la llave ni contraseñas, se niega a usar una llave guardada dentro del repo, evita dos corridas a la vez y espera hasta 2 minutos a que haya internet.
+- Se respetan las mismas reglas de red: robots.txt, máximo 1 petición por segundo por dominio y User-Agent `ChambaBot/1.0`.
+- Para quitarlo: `systemctl --user disable --now chamba-buscar.timer`.
+- `.github/workflows/buscar.yml` se conserva solo con el botón manual; su horario está comentado.
 
 ## Scripts
 
@@ -129,7 +178,9 @@ Para usar el Sheet también desde tu laptop, pon esas mismas variables en `.env`
 | `npm run import` | Importa `data/import/*.csv` |
 | `npm run export` | Exporta CSV a `data/export/` |
 | `npm run seed` | Carga los datos de ejemplo ficticios |
-| `npm run buscar` | Corre todas las fuentes activas y guarda (lo usa GitHub Actions) |
+| `npm run buscar` | Corre todas las fuentes activas y guarda (lo usa el timer de systemd) |
+| `./scripts/buscar-local.sh` | Igual, cargando `~/.config/chamba/env` y con log en `~/.local/state/chamba/buscar.log` |
+| `./scripts/instalar-timer.sh` | Instala y activa el timer de systemd (cada 6 horas) |
 
 ## Si algo falla
 

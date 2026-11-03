@@ -1,0 +1,14 @@
+# Chamba: búsqueda de vacantes (la dispara chamba-buscar.timer).
+# scripts/instalar-timer.sh la copia a ~/.config/systemd/user/ reemplazando @REPO@ por la ruta del repo.
+[Unit]
+Description=Chamba: buscar vacantes y guardarlas en el Google Sheet
+
+[Service]
+Type=oneshot
+WorkingDirectory=@REPO@
+ExecStart=@REPO@/scripts/buscar-local.sh
+# La búsqueda tarda unos minutos; se corta si pasa de 30.
+TimeoutStartSec=30min
+Nice=10
+NoNewPrivileges=true
+PrivateTmp=true

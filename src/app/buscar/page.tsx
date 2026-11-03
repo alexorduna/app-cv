@@ -49,8 +49,8 @@ export default async function PaginaBuscar({ searchParams }: { searchParams: Pro
           {process.env.CHAMBA_BUSQUEDA_EXTERNA === "1" ? (
             <div className="aviso flex flex-col gap-1">
               <div>
-                En línea, la búsqueda corre sola en GitHub Actions cada 6 horas y guarda los resultados en tu Google Sheet
-                (en Netlify se cortaría a los pocos segundos).
+                En línea, la búsqueda corre en tu laptop cada 6 horas (timer de systemd) y guarda los resultados en tu Google Sheet;
+                en Netlify se cortaría a los pocos segundos. Las vacantes nuevas aparecen aquí y en la pestaña &quot;Nuevas&quot;.
               </div>
               <a
                 className="enlace w-fit font-medium"
@@ -58,7 +58,7 @@ export default async function PaginaBuscar({ searchParams }: { searchParams: Pro
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Correr la búsqueda ahora en GitHub (botón &quot;Run workflow&quot;) ↗
+                O córrela a mano en GitHub Actions (si tu cuenta lo permite) ↗
               </a>
             </div>
           ) : (

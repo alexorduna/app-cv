@@ -7,6 +7,16 @@ import { guardar, modoAlmacen, obtenerDb } from "../src/db/almacen";
 import { buscarVacantes } from "../src/lib/buscar";
 
 (async () => {
+  try {
+    await buscar();
+  } catch (e) {
+    // Mensaje claro, sin volcar la pila (y sin variables de entorno: nunca se imprimen la llave ni contraseñas).
+    console.error(`✖ ${(e as Error).message}`);
+    process.exit(1);
+  }
+})();
+
+async function buscar() {
   cargarEnv();
   console.log(`▶ Buscando vacantes (almacén: ${modoAlmacen() === "sheets" ? "Google Sheet" : "SQLite local"})`);
   const db = await obtenerDb();
@@ -19,4 +29,4 @@ import { buscarVacantes } from "../src/lib/buscar";
   }
   // Una fuente caída no hace fallar todo (la app sigue con las demás).
   if (errores === resultados.length && resultados.length > 0) process.exit(1);
-})();
+}
