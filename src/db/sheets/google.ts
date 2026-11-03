@@ -47,6 +47,15 @@ export interface RangoValores {
   values?: string[][];
 }
 
+export interface RespuestaEstructura {
+  addSheet?: { properties: PropiedadesPestana };
+}
+
+/** ¿Google rechazó crear una pestaña porque ya existe? (pasa si dos peticiones la crean a la vez) */
+export function esPestanaYaExiste(e: unknown): boolean {
+  return e instanceof ErrorSheets && e.estado === 400 && /already exists|ya existe/i.test(e.message);
+}
+
 export interface PropiedadesPestana {
   sheetId: number;
   title: string;
@@ -58,14 +67,16 @@ export class ClienteSheets {
   private token: { valor: string; vence: number } | null = null;
   private fetchFn: FetchFn;
   readonly base: string;
+  private timeoutMs: number;
 
   constructor(
     readonly spreadsheetId: string,
     private credencial: CredencialServicio | null,
-    opciones: { fetch?: FetchFn; base?: string } = {},
+    opciones: { fetch?: FetchFn; base?: string; timeoutMs?: number } = {},
   ) {
     this.fetchFn = opciones.fetch ?? ((u, i) => fetch(u, i));
     this.base = opciones.base ?? "https://sheets.googleapis.com/v4/spreadsheets";
+    this.timeoutMs = opciones.timeoutMs ?? 30_000;
   }
 
   private async tokenAcceso(): Promise<string | null> {
@@ -80,6 +91,8 @@ export class ClienteSheets {
     const firma = b64url(createSign("RSA-SHA256").update(`${cabecera}.${cuerpo}`).sign(this.credencial.private_key));
     const r = await this.fetchFn(uri, {
       method: "POST",
+      cache: "no-store",
+      signal: AbortSignal.timeout(this.timeoutMs),
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: `${cabecera}.${cuerpo}.${firma}` }).toString(),
     });
@@ -93,6 +106,12 @@ export class ClienteSheets {
     const token = await this.tokenAcceso();
     const r = await this.fetchFn(`${this.base}/${this.spreadsheetId}${ruta}`, {
       ...init,
+      // Importante dentro de Next.js: sin `signal`, Next reutiliza la respuesta de un GET idéntico hecho antes
+      // en la misma petición (node_modules/next/dist/server/lib/dedupe-fetch.js). Eso devolvía la lista de
+      // pestañas de ANTES de crearlas y datos viejos después de guardar. `signal` es la forma documentada de
+      // desactivarlo; `cache: "no-store"` evita además la caché de datos de Next.
+      cache: "no-store",
+      signal: AbortSignal.timeout(this.timeoutMs),
       headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(init.headers ?? {}) },
     });
     if (!r.ok) {
@@ -123,10 +142,11 @@ export class ClienteSheets {
     await this.pedir(`/values:batchUpdate`, { method: "POST", body: JSON.stringify({ valueInputOption: modo, data: datos }) });
   }
 
-  /** Cambios de estructura: crear pestañas, borrar filas, ocultar columnas, etc. */
-  async estructura(requests: unknown[]) {
-    if (requests.length === 0) return;
-    await this.pedir(`:batchUpdate`, { method: "POST", body: JSON.stringify({ requests }) });
+  /** Cambios de estructura: crear pestañas, borrar filas, ocultar columnas, etc. Devuelve las respuestas de Google. */
+  async estructura(requests: unknown[]): Promise<RespuestaEstructura[]> {
+    if (requests.length === 0) return [];
+    const j = await this.pedir<{ replies?: RespuestaEstructura[] }>(`:batchUpdate`, { method: "POST", body: JSON.stringify({ requests }) });
+    return j.replies ?? [];
   }
 }
 
