@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+/* Modo oscuro por clase (.dark en <html>), controlado por el botón de tema. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "JetBrains Mono", "Fira Code", "DejaVu Sans Mono", monospace;
+}
+
+html { color-scheme: light; }
+html.dark { color-scheme: dark; }
+body { @apply bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 antialiased; }
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer;
+}
+@utility btn-primario {
+  @apply btn border-emerald-700 bg-emerald-600 text-white hover:bg-emerald-700 dark:border-emerald-500 dark:bg-emerald-600 dark:hover:bg-emerald-500;
+}
+@utility btn-sec {
+  @apply btn border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800;
+}
+@utility btn-peligro {
+  @apply btn border-red-300 bg-white text-red-700 hover:bg-red-50 dark:border-red-800 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-red-950;
+}
+@utility btn-chico {
+  @apply px-2 py-1 text-xs;
+}
+@utility campo {
+  @apply w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-900;
+}
+@utility etiqueta {
+  @apply mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400;
+}
+@utility tarjeta {
+  @apply rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900;
+}
+@utility titulo {
+  @apply text-xl font-semibold tracking-tight;
+}
+@utility subtitulo {
+  @apply text-sm text-zinc-500 dark:text-zinc-400;
+}
+@utility chip {
+  @apply inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium cursor-pointer select-none transition-colors border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800;
+}
+@utility chip-activo {
+  @apply border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 dark:border-emerald-500 dark:bg-emerald-600 dark:text-white;
+}
+@utility enlace {
+  @apply text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400;
+}
+@utility aviso {
+  @apply rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200;
+}
+@utility error {
+  @apply rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900 dark:border-red-800 dark:bg-red-950/50 dark:text-red-200;
+}
+@utility ok {
+  @apply rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200;
+}
