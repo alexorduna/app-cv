@@ -23,7 +23,7 @@ export function Aplicar({ cola, respuestas }: { cola: ItemCola[]; respuestas: Re
   if (!actual) {
     return (
       <div className="tarjeta text-sm">
-        No hay vacantes en &quot;Lista para aplicar&quot;. Marca algunas desde el <Link href="/" className="enlace">Tablero</Link> o la bandeja de <Link href="/buscar" className="enlace">Nuevas</Link>.
+        No hay vacantes en &quot;Lista para aplicar&quot;. Marca algunas desde el <Link prefetch={false} href="/" className="enlace">Tablero</Link> o la bandeja de <Link prefetch={false} href="/buscar" className="enlace">Nuevas</Link>.
       </div>
     );
   }
@@ -67,7 +67,7 @@ export function Aplicar({ cola, respuestas }: { cola: ItemCola[]; respuestas: Re
           <div className="flex flex-wrap gap-2">
             <button className="btn-primario" onClick={abrir} disabled={!v.enlace}>Abrir enlace en pestaña nueva ↗</button>
             <button className="btn-sec" onClick={yaAplique} disabled={pendiente}>✔ Ya apliqué</button>
-            <Link className="btn-sec" href={`/vacante/${v.id}`}>Ver detalle</Link>
+            <Link prefetch={false} className="btn-sec" href={`/vacante/${v.id}`}>Ver detalle</Link>
           </div>
           <p className="text-xs text-zinc-500">Chamba nunca envía la solicitud: tú llenas y envías el formulario en la otra pestaña. &quot;Ya apliqué&quot; solo registra la fecha de hoy.</p>
           {v.notas && <div className="aviso whitespace-pre-line text-xs">{v.notas}</div>}
@@ -81,7 +81,7 @@ export function Aplicar({ cola, respuestas }: { cola: ItemCola[]; respuestas: Re
           {actual.carta ? (
             <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap font-sans text-sm text-zinc-700 dark:text-zinc-300">{actual.carta}</pre>
           ) : (
-            <p className="text-sm text-zinc-500">Sin carta aprobada. <Link className="enlace" href={`/cartas?vacante=${v.id}`}>Generar y aprobar una</Link>.</p>
+            <p className="text-sm text-zinc-500">Sin carta aprobada. <Link prefetch={false} className="enlace" href={`/cartas?vacante=${v.id}`}>Generar y aprobar una</Link>.</p>
           )}
         </div>
 

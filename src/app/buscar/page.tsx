@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { leerDb } from "@/db/servidor";
+import { cargarExtra } from "@/db/almacen";
 import { ejecucionesFuentes } from "@/db/schema";
 import { BandejaNuevas, BotonBuscar, BotonBuscarEnLinea, ListaDescartadas, PegarAlerta, PegarEnlace } from "@/components/Buscar";
 import { FUENTES } from "@/lib/fuentes";
@@ -19,6 +20,7 @@ const PESTANAS = [
 export default async function PaginaBuscar({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab = "nuevas" } = await searchParams;
   const db = await leerDb();
+  if (tab === "descartadas") await cargarExtra(db, "descartadas");
   const nuevas = listarNuevas(db);
   const valores = leerFiltros(db);
   const ejecuciones = new Map(db.select().from(ejecucionesFuentes).all().map((e) => [e.fuente, e]));

@@ -7,7 +7,8 @@
  */
 import { abrirBaseDatos, getDb, type DB } from "./index";
 import { clienteDesdeEntorno, type ClienteSheets } from "./sheets/google";
-import { hidratar, volcar } from "./sheets/sincronizar";
+import { cargarPestanas, hidratar, volcar } from "./sheets/sincronizar";
+import { PESTANA_DESCARTADAS, PESTANA_VISTAS } from "./sheets/mapa";
 import { sembrarFiltros } from "@/lib/filtros/repo";
 import { sembrarListas } from "@/lib/fuentes/github";
 
@@ -24,17 +25,38 @@ export function usarClienteSheets(c: ClienteSheets | null) {
   clienteCompartido = c;
 }
 
-/** Abre la base: en modo Sheets lee el Sheet completo (unas 2 llamadas a Google). */
-export async function obtenerDb(): Promise<DB> {
+/**
+ * Cuánto del Sheet se lee (en modo local no importa: SQLite ya tiene todo).
+ *  - "lectura": pantallas. Sin las pestañas pesadas que casi ninguna pantalla usa
+ *    (_Vistas ~1.6 MB de huellas, _Descartadas, _Actividad); se cargan aparte con cargarExtra().
+ *  - "escritura": acciones normales (cambiar estado, aceptar, descartar…). Todo menos _Vistas.
+ *  - "ingesta": búsqueda, alertas y enlaces nuevos (necesitan las huellas para no duplicar). Todo.
+ */
+export type ModoLectura = "lectura" | "escritura" | "ingesta";
+
+const OMITIR: Record<ModoLectura, string[]> = {
+  lectura: [PESTANA_VISTAS, PESTANA_DESCARTADAS, "_Actividad"],
+  escritura: [PESTANA_VISTAS],
+  ingesta: [],
+};
+
+/** Abre la base: en modo Sheets lee el Sheet (unas 2 llamadas a Google). */
+export async function obtenerDb(modo: ModoLectura = "ingesta"): Promise<DB> {
   if (modoAlmacen() === "local" && !clienteCompartido) return getDb();
   clienteCompartido ??= clienteDesdeEntorno();
   const db = abrirBaseDatos(":memory:");
-  await hidratar(db, clienteCompartido);
+  await hidratar(db, clienteCompartido, { omitir: OMITIR[modo] });
   // Primera vez: siembra configuración y listas por defecto y las guarda en el Sheet.
   sembrarFiltros(db);
   sembrarListas(db);
   await guardar(db);
   return db;
+}
+
+/** En pantallas que lo necesitan, carga las pestañas que "lectura" omitió. En modo local no hace nada. */
+export async function cargarExtra(db: DB, ...que: ("descartadas" | "actividad")[]) {
+  const nombres = que.map((q) => (q === "descartadas" ? PESTANA_DESCARTADAS : "_Actividad"));
+  await cargarPestanas(db, nombres);
 }
 
 /** Escribe en el Sheet lo que cambió. En modo local no hace nada (SQLite ya guardó). */
