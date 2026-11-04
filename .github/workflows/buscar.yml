@@ -2,10 +2,14 @@
 # Nunca aplica a nada: solo deja vacantes nuevas en la pestaña "Nuevas" para que tú las revises.
 name: Buscar vacantes
 
+# El horario automático está DESACTIVADO: la cuenta de GitHub tiene la facturación bloqueada y Actions
+# pide tarjeta. La búsqueda automática corre en la laptop con un timer de systemd (scripts/buscar-local.sh,
+# ver README "Búsqueda automática sin GitHub Actions"). Para reactivarlo si se resuelve la facturación,
+# quita el "#" de las dos líneas de schedule.
 on:
-  schedule:
-    - cron: "17 */6 * * *" # cada 6 horas (UTC)
-  workflow_dispatch: {} # botón "Run workflow" para correrla cuando quieras
+  # schedule:
+  #   - cron: "17 */6 * * *" # cada 6 horas (UTC)
+  workflow_dispatch: {} # botón "Run workflow" para correrla a mano
 
 permissions:
   contents: read

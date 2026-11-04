@@ -7,3 +7,10 @@
 [build.environment]
   NODE_VERSION = "22"
   NEXT_TELEMETRY_DISABLED = "1"
+
+# Búsqueda automática en Netlify (gratis en el plan Free; ver README "Búsqueda automática en Netlify").
+# buscar-programada (cada 6 h, máx. 30 s) dispara buscar-background (máx. 15 min), que corre la búsqueda.
+[functions."buscar-background"]
+  node_bundler = "esbuild"
+  external_node_modules = ["better-sqlite3"]
+  included_files = ["drizzle/**"]

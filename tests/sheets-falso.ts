@@ -59,8 +59,27 @@ export class SheetsFalso {
     return resto.filter((f) => f.some((c) => c)).map((f) => Object.fromEntries(enc.map((h, i) => [h, f[i] ?? ""])));
   }
 
-  cliente(): ClienteSheets {
-    return new ClienteSheets("falso", null, { fetch: (u, i) => this.atender(u, i), base: "https://falso/v4/spreadsheets" });
+  /** Peticiones GET que llegaron sin `signal` (Next.js las memoizaría). */
+  getSinSignal = 0;
+
+  /**
+   * Cliente contra este servidor falso. Con `comoNext`, el fetch se comporta como el de Next.js dentro de un render:
+   * reutiliza la respuesta de un GET idéntico si la petición no trae `signal`
+   * (igual que node_modules/next/dist/server/lib/dedupe-fetch.js).
+   */
+  cliente(opciones: { comoNext?: boolean; retrasoMs?: number } = {}): ClienteSheets {
+    const memo = new Map<string, Promise<Response>>();
+    const fetchFn = async (u: string, i?: RequestInit) => {
+      if (opciones.retrasoMs) await new Promise((r) => setTimeout(r, Math.random() * opciones.retrasoMs!));
+      const esGet = !i?.method || i.method === "GET";
+      if (esGet && !i?.signal) this.getSinSignal++;
+      if (opciones.comoNext && esGet && !i?.signal) {
+        if (!memo.has(u)) memo.set(u, this.atender(u, i));
+        return (await memo.get(u)!).clone();
+      }
+      return this.atender(u, i);
+    };
+    return new ClienteSheets("falso", null, { fetch: fetchFn, base: "https://falso/v4/spreadsheets" });
   }
 
   private set(p: Pestana, f: number, c: number, v: string) {
@@ -118,13 +137,23 @@ export class SheetsFalso {
       return json({});
     }
     if (ruta === ":batchUpdate") {
+      // Atómico como Google: si una petición falla, no se aplica ninguna.
+      const respaldo = JSON.stringify(this.pestanas.map((p) => ({ ...p, columnasOcultas: [...p.columnasOcultas] })));
+      const respuestas: unknown[] = [];
       for (const req of cuerpo.requests as Record<string, any>[]) {
         if (req.addSheet) {
           const pr = req.addSheet.properties;
+          // Como Google: los nombres de pestaña son únicos (sin distinguir mayúsculas) y el lote es atómico.
+          if (this.pestanas.some((x) => x.title.toLowerCase() === String(pr.title).toLowerCase())) {
+            this.pestanas = JSON.parse(respaldo).map((p: any) => ({ ...p, columnasOcultas: new Set(p.columnasOcultas) }));
+            return new Response(JSON.stringify({ error: { code: 400, message: `Invalid requests[0].addSheet: A sheet with the name "${pr.title}" already exists. Please enter another name.` } }), { status: 400 });
+          }
           this.agregarPestana(pr.title, [], !!pr.hidden);
           const p = this.pestana(pr.title);
           p.rowCount = pr.gridProperties?.rowCount ?? 1000;
           p.columnCount = pr.gridProperties?.columnCount ?? 26;
+          respuestas.push({ addSheet: { properties: { sheetId: p.sheetId, title: p.title, hidden: p.hidden, gridProperties: { rowCount: p.rowCount, columnCount: p.columnCount } } } });
+          continue;
         } else if (req.deleteDimension) {
           const { sheetId, startIndex, endIndex } = req.deleteDimension.range;
           const p = this.pestanas.find((x) => x.sheetId === sheetId)!;
@@ -138,11 +167,17 @@ export class SheetsFalso {
           const { sheetId, startIndex } = req.updateDimensionProperties.range;
           this.pestanas.find((x) => x.sheetId === sheetId)!.columnasOcultas.add(startIndex);
         } else throw new Error(`Petición no soportada: ${Object.keys(req)}`);
+        respuestas.push({});
       }
-      return json({});
+      return json({ replies: respuestas });
     }
     return new Response("no soportado", { status: 400 });
   }
+}
+
+/** Copia profunda del contenido de una pestaña (para comparar antes/después). */
+export function copiaCeldas(s: SheetsFalso, titulo: string) {
+  return JSON.stringify(s.pestana(titulo).celdas);
 }
 
 /** Un Sheet parecido al real de Alex (datos inventados). */

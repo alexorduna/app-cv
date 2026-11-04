@@ -1,0 +1,13 @@
+# Chamba: corre la búsqueda cada 6 horas (00:17, 06:17, 12:17 y 18:17, hora local).
+# Persistent=true: si la laptop estaba apagada a esa hora, corre al encenderla.
+[Unit]
+Description=Chamba: búsqueda de vacantes cada 6 horas
+
+[Timer]
+OnCalendar=*-*-* 00/6:17:00
+Persistent=true
+RandomizedDelaySec=5min
+Unit=chamba-buscar.service
+
+[Install]
+WantedBy=timers.target

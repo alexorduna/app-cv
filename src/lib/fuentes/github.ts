@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { eq } from "drizzle-orm";
@@ -74,10 +75,56 @@ export interface ResultadoLista {
   sha: string | null;
   sinCambios: boolean;
   formato: string;
+  /** "api" = SHA del commit vía api.github.com; "raw" = sin API, huella del contenido. */
+  via?: "api" | "raw";
 }
 
-/** Lee una lista: obtiene el SHA de la rama, y si cambió descarga listings.json o el README. */
+/**
+ * Lee una lista. Primero con la API de GitHub (SHA del commit); si la API falla (p. ej. límite de 60/h
+ * por IP compartida en servidores como Netlify), lee directo de raw.githubusercontent.com sin API.
+ */
 export async function leerLista(http: ClienteHttp, lista: Pick<ListaGithub, "repo" | "rama" | "formato" | "ultimoSha">): Promise<ResultadoLista> {
+  try {
+    return { ...(await leerListaConApi(http, lista)), via: "api" };
+  } catch (e) {
+    if (e instanceof FormatoNoReconocido) throw e;
+    try {
+      return { ...(await leerListaSinApi(http, lista)), via: "raw" };
+    } catch (e2) {
+      if (e2 instanceof FormatoNoReconocido) throw e2;
+      throw new Error(`${(e as Error).message} Sin API tampoco se pudo: ${(e2 as Error).message}`);
+    }
+  }
+}
+
+/** Sin API: prueba ramas comunes en raw.githubusercontent.com y usa una huella del contenido como "SHA". */
+export async function leerListaSinApi(http: ClienteHttp, lista: Pick<ListaGithub, "repo" | "rama" | "formato" | "ultimoSha">): Promise<ResultadoLista> {
+  // "HEAD" = la rama por defecto del repo (raw.githubusercontent.com lo resuelve sin usar la API).
+  const ramas = lista.rama ? [lista.rama] : ["HEAD", "main", "dev"];
+  const tipo: Tipo | undefined = /intern/i.test(lista.repo) ? "Prácticas" : undefined;
+  const huellaContenido = (t: string) => `contenido:${createHash("sha256").update(t).digest("hex").slice(0, 16)}`;
+  for (const rama of ramas) {
+    const base = `${RAW}/${lista.repo}/${encodeURIComponent(rama)}`;
+    if (lista.formato !== "enlaces") {
+      for (const ruta of [".github/scripts/listings.json", "listings.json"]) {
+        const json = await intentarTexto(http, `${base}/${ruta}`);
+        if (json === null) continue;
+        const sha = huellaContenido(json);
+        if (sha === lista.ultimoSha) return { candidatas: [], sha, sinCambios: true, formato: "" };
+        return { candidatas: parsearListingsJson(json, tipo), sha, sinCambios: false, formato: `${ruta} (${rama}, sin API)` };
+      }
+    }
+    const readme = await intentarTexto(http, `${base}/README.md`);
+    if (readme === null) continue;
+    const sha = huellaContenido(readme);
+    if (sha === lista.ultimoSha) return { candidatas: [], sha, sinCambios: true, formato: "" };
+    return { candidatas: parsearReadme(readme, lista.formato === "enlaces" ? "enlaces" : "auto", tipo), sha, sinCambios: false, formato: `README.md (${rama}, sin API)` };
+  }
+  throw new Error(`No se encontró listings.json ni README.md en ${lista.repo} (ramas probadas sin API: ${ramas.join(", ")}).`);
+}
+
+/** Con API: obtiene el SHA de la rama, y si cambió descarga listings.json o el README. */
+async function leerListaConApi(http: ClienteHttp, lista: Pick<ListaGithub, "repo" | "rama" | "formato" | "ultimoSha">): Promise<ResultadoLista> {
   let ramas = lista.rama ? [lista.rama] : [];
   if (!lista.rama) {
     const info = (await (await apiGithub(http, `/repos/${lista.repo}`)).json()) as { default_branch?: string };

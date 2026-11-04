@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import type { Vacante } from "@/db/schema";
 import type { ResultadoFuente } from "@/lib/buscar";
 import {
-  aceptarNuevasAccion, buscarAhoraAccion, descartarNuevasAccion, ingresarAlertaAccion, pegarEnlaceAccion,
+  aceptarNuevasAccion, buscarAhoraAccion, dispararBusquedaEnLineaAccion, descartarNuevasAccion, ingresarAlertaAccion, pegarEnlaceAccion,
   previsualizarAlertaAccion, rescatarAccion,
 } from "@/app/acciones";
 import { Prioridad, TextoArea } from "./ui";
@@ -36,6 +36,20 @@ export function BotonBuscar({ hayActivas }: { hayActivas: boolean }) {
           </tbody>
         </table>
       )}
+    </div>
+  );
+}
+
+/** En Netlify: dispara la función de segundo plano y avisa (no espera el resultado). */
+export function BotonBuscarEnLinea() {
+  const [pendiente, iniciar] = useTransition();
+  const [msg, setMsg] = useState<{ ok: boolean; mensaje: string } | null>(null);
+  return (
+    <div className="flex flex-col gap-2">
+      <button className="btn-primario w-fit" disabled={pendiente} onClick={() => iniciar(async () => setMsg(await dispararBusquedaEnLineaAccion()))}>
+        {pendiente ? "Disparando…" : "Buscar ahora"}
+      </button>
+      {msg && <div className={msg.ok ? "ok" : "error"}>{msg.mensaje}</div>}
     </div>
   );
 }

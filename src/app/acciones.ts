@@ -92,6 +92,30 @@ export async function restaurarAccion(id: number) {
 
 // ---------- Búsqueda ----------
 
+/**
+ * En línea (Netlify), la búsqueda no cabe en una petición normal: se dispara la función de segundo plano
+ * buscar-background, que responde de inmediato y sigue trabajando hasta 15 minutos.
+ */
+export async function dispararBusquedaEnLineaAccion(): Promise<{ ok: boolean; mensaje: string }> {
+  const { headers } = await import("next/headers");
+  const h = await headers();
+  const origen = process.env.URL || `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host")}`;
+  const clave = process.env.CHAMBA_CLAVE;
+  if (!clave) return { ok: false, mensaje: "Falta CHAMBA_CLAVE en Netlify." };
+  try {
+    const r = await fetch(`${origen}/.netlify/functions/buscar-background`, {
+      method: "POST",
+      headers: { "x-chamba-clave": clave },
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (r.status === 202 || r.ok) return { ok: true, mensaje: "La búsqueda empezó. Tarda unos minutos; después recarga la pestaña Nuevas." };
+    return { ok: false, mensaje: `Netlify respondió HTTP ${r.status}. ¿Se desplegó la función buscar-background?` };
+  } catch (e) {
+    return { ok: false, mensaje: `No pude disparar la búsqueda: ${(e as Error).message}` };
+  }
+}
+
 export async function buscarAhoraAccion(soloFuente?: string): Promise<ResultadoFuente[]> {
   const db = await obtenerDb();
   const r = await buscarVacantes(db, soloFuente ? { soloFuentes: [soloFuente] } : {});

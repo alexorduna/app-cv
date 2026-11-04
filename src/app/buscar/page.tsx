@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { leerDb } from "@/db/servidor";
 import { ejecucionesFuentes } from "@/db/schema";
-import { BandejaNuevas, BotonBuscar, ListaDescartadas, PegarAlerta, PegarEnlace } from "@/components/Buscar";
+import { BandejaNuevas, BotonBuscar, BotonBuscarEnLinea, ListaDescartadas, PegarAlerta, PegarEnlace } from "@/components/Buscar";
 import { FUENTES } from "@/lib/fuentes";
 import { leerFiltros } from "@/lib/filtros/repo";
 import { listarDescartadasAuto, listarNuevas } from "@/lib/vacantes";
@@ -47,19 +47,12 @@ export default async function PaginaBuscar({ searchParams }: { searchParams: Pro
       {tab === "fuentes" && (
         <div className="flex flex-col gap-4">
           {process.env.CHAMBA_BUSQUEDA_EXTERNA === "1" ? (
-            <div className="aviso flex flex-col gap-1">
-              <div>
-                En línea, la búsqueda corre sola en GitHub Actions cada 6 horas y guarda los resultados en tu Google Sheet
-                (en Netlify se cortaría a los pocos segundos).
+            <div className="flex flex-col gap-2">
+              <div className="aviso">
+                En línea, Netlify corre la búsqueda solo cada 6 horas y guarda los resultados en tu Google Sheet. Las vacantes
+                nuevas aparecen en la pestaña Nuevas. Si quieres, córrela ahora:
               </div>
-              <a
-                className="enlace w-fit font-medium"
-                href={`https://github.com/${process.env.CHAMBA_REPO_GITHUB || "alexorduna/app-cv"}/actions/workflows/buscar.yml`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Correr la búsqueda ahora en GitHub (botón &quot;Run workflow&quot;) ↗
-              </a>
+              <BotonBuscarEnLinea />
             </div>
           ) : (
             <BotonBuscar hayActivas={activas.length > 0} />

@@ -15,7 +15,7 @@ import * as schema from "@/db/schema";
 import { mapearArea, mapearEstado, mapearTipo, esPreguntaSalarial } from "@/lib/importacion";
 import { calcularHuella } from "@/lib/huella";
 import { ahoraISO, normalizar, normalizarFecha } from "@/lib/texto";
-import type { ClienteSheets, PropiedadesPestana } from "./google";
+import { esPestanaYaExiste, type ClienteSheets, type PropiedadesPestana } from "./google";
 import {
   MAX_ACTIVIDAD, MAX_DESCARTADAS_FILTROS, PESTANA_DESCARTADAS, PESTANA_NUEVAS, PESTANA_SEGUIMIENTO, PESTANA_VISTAS, TABLAS,
   colLetra, ref, type Columna, type DefTabla,
@@ -125,30 +125,64 @@ const vacio = (r: Registro, def: DefTabla) => def.columnas.every((c) => r[c.camp
 
 // ------------------------------------------------------------------ estructura
 
-/** Crea pestañas y columnas que falten (y oculta las técnicas). Devuelve la info de cada pestaña. */
-async function asegurarEstructura(cliente: ClienteSheets, encabezadosLeidos: Map<string, string[]>) {
-  let props = await cliente.pestanas();
-  const porNombre = new Map(props.map((p) => [p.title, p]));
-  const requests: unknown[] = [];
-  const todas: [string, DefTabla][] = TABLAS.flatMap((d) => d.pestanas.map((p) => [p, d] as [string, DefTabla]));
+/** Pestañas que la app necesita, con la definición de su tabla (null para _Vistas). */
+function pestanasRequeridas(): [string, DefTabla | null][] {
+  return [...TABLAS.flatMap((d) => d.pestanas.map((p) => [p, d] as [string, DefTabla])), [PESTANA_VISTAS, null]];
+}
 
-  for (const [pestana, def] of todas) {
-    if (porNombre.has(pestana)) continue;
-    const oculta = def.oculta || pestana.startsWith("_");
-    requests.push({ addSheet: { properties: { title: pestana, hidden: oculta, gridProperties: { rowCount: 1000, columnCount: Math.max(26, def.columnas.length), frozenRowCount: 1 } } } });
+function pedidoCrear(pestana: string, def: DefTabla | null) {
+  if (!def) return { addSheet: { properties: { title: pestana, hidden: true, gridProperties: { rowCount: 100, columnCount: 1 } } } };
+  const oculta = def.oculta || pestana.startsWith("_");
+  return {
+    addSheet: {
+      properties: { title: pestana, hidden: oculta, gridProperties: { rowCount: 1000, columnCount: Math.max(26, def.columnas.length), frozenRowCount: 1 } },
+    },
+  };
+}
+
+/**
+ * Garantiza que existan TODAS las pestañas que usa la app (también las ocultas con "_") y devuelve sus propiedades.
+ * Las recién creadas se toman de la respuesta de Google (no de una relectura). Si otra petición las creó al mismo
+ * tiempo ("already exists"), se vuelve a leer la lista y se crean solo las que sigan faltando.
+ */
+async function asegurarPestanas(cliente: ClienteSheets): Promise<Map<string, PropiedadesPestana>> {
+  const requeridas = pestanasRequeridas();
+  const porNombre = new Map((await cliente.pestanas()).map((p) => [p.title, p]));
+  for (let intento = 1; intento <= 3; intento++) {
+    const faltan = requeridas.filter(([n]) => !porNombre.has(n));
+    if (faltan.length === 0) break;
+    try {
+      const respuestas = await cliente.estructura(faltan.map(([n, d]) => pedidoCrear(n, d)));
+      for (const r of respuestas) if (r.addSheet) porNombre.set(r.addSheet.properties.title, r.addSheet.properties);
+    } catch (e) {
+      if (!esPestanaYaExiste(e) || intento === 3) throw e;
+      for (const p of await cliente.pestanas()) porNombre.set(p.title, p);
+    }
   }
-  if (!porNombre.has(PESTANA_VISTAS)) requests.push({ addSheet: { properties: { title: PESTANA_VISTAS, hidden: true, gridProperties: { rowCount: 100, columnCount: 1 } } } });
-  if (requests.length) {
-    await cliente.estructura(requests);
-    props = await cliente.pestanas();
+  const noEstan = requeridas.map(([n]) => n).filter((n) => !porNombre.has(n));
+  if (noEstan.length) {
+    throw new Error(
+      `Faltan pestañas en el Google Sheet y no se pudieron crear: ${noEstan.map((n) => `"${n}"`).join(", ")}. ` +
+        "Revisa que la cuenta de servicio tenga permiso de Editor sobre el Sheet.",
+    );
   }
+  return porNombre;
+}
+
+/**
+ * Garantiza que cada pestaña tenga las columnas que usa la app (por encabezado). Agrega al final las que falten
+ * (p. ej. "Motivo de descarte" en Seguimiento) y oculta las técnicas. No toca ninguna otra columna.
+ */
+async function asegurarColumnas(cliente: ClienteSheets, props: Map<string, PropiedadesPestana>, encabezadosLeidos: Map<string, string[]>) {
   const info = new Map<string, InfoPestana>();
   const escrituras: { range: string; values: string[][] }[] = [];
-  const ocultar: unknown[] = [];
-  for (const p of props) info.set(p.title, { props: p, columnas: new Map(), ultimaFila: 1 });
-
-  for (const [pestana, def] of todas) {
-    const i = info.get(pestana)!;
+  const estructura: unknown[] = [];
+  for (const [pestana, def] of pestanasRequeridas()) {
+    const p = props.get(pestana);
+    if (!p) throw new Error(`Falta la pestaña "${pestana}" en el Google Sheet.`);
+    const i: InfoPestana = { props: p, columnas: new Map(), ultimaFila: 1 };
+    info.set(pestana, i);
+    if (!def) continue; // _Vistas no tiene encabezados
     const encabezados = [...(encabezadosLeidos.get(pestana) ?? [])];
     for (const col of def.columnas) {
       let idx = indiceEncabezado(encabezados, col);
@@ -157,9 +191,9 @@ async function asegurarEstructura(cliente: ClienteSheets, encabezadosLeidos: Map
         encabezados.push(col.encabezados[0]);
         escrituras.push({ range: ref(pestana, `${colLetra(idx)}1`), values: [[col.encabezados[0]]] });
         if (col.oculta && !def.oculta) {
-          ocultar.push({
+          estructura.push({
             updateDimensionProperties: {
-              range: { sheetId: i.props.sheetId, dimension: "COLUMNS", startIndex: idx, endIndex: idx + 1 },
+              range: { sheetId: p.sheetId, dimension: "COLUMNS", startIndex: idx, endIndex: idx + 1 },
               properties: { hiddenByUser: true },
               fields: "hiddenByUser",
             },
@@ -168,11 +202,14 @@ async function asegurarEstructura(cliente: ClienteSheets, encabezadosLeidos: Map
       }
       i.columnas.set(col.campo, idx);
     }
-    const faltanCols = encabezados.length - (i.props.gridProperties?.columnCount ?? 26);
-    if (faltanCols > 0) ocultar.unshift({ appendDimension: { sheetId: i.props.sheetId, dimension: "COLUMNS", length: faltanCols } });
+    const faltanCols = encabezados.length - (p.gridProperties?.columnCount ?? 26);
+    if (faltanCols > 0) {
+      estructura.unshift({ appendDimension: { sheetId: p.sheetId, dimension: "COLUMNS", length: faltanCols } });
+      p.gridProperties = { ...p.gridProperties, columnCount: encabezados.length };
+    }
   }
-  if (ocultar.length) await cliente.estructura(ocultar);
-  if (escrituras.length) await cliente.escribir(escrituras, "RAW");
+  await cliente.estructura(estructura);
+  await cliente.escribir(escrituras, "RAW");
   return info;
 }
 
@@ -180,15 +217,14 @@ async function asegurarEstructura(cliente: ClienteSheets, encabezadosLeidos: Map
 
 /** Lee todo el Sheet y llena la base en memoria `db` (recién creada y migrada). */
 export async function hidratar(db: DB, cliente: ClienteSheets): Promise<void> {
-  const nombres = [...TABLAS.flatMap((d) => d.pestanas), PESTANA_VISTAS];
-  const existentes = new Set((await cliente.pestanas()).map((p) => p.title));
-  const aLeer = nombres.filter((n) => existentes.has(n));
-  const leidos = await cliente.leer(aLeer.map((n) => ref(n, "A1:ZZ")));
+  // 1) Primero la estructura: así se leen los datos de TODAS las pestañas, incluso las que creó otra petición.
+  const props = await asegurarPestanas(cliente);
+  const nombres = pestanasRequeridas().map(([n]) => n);
+  const leidos = await cliente.leer(nombres.map((n) => ref(n, "A1:ZZ")));
   const datos = new Map<string, string[][]>();
-  aLeer.forEach((n, i) => datos.set(n, (leidos[i]?.values ?? []) as string[][]));
-
+  nombres.forEach((n, i) => datos.set(n, (leidos[i]?.values ?? []) as string[][]));
   const encabezados = new Map([...datos].map(([n, filas]) => [n, filas[0] ?? []]));
-  const pestanas = await asegurarEstructura(cliente, encabezados);
+  const pestanas = await asegurarColumnas(cliente, props, encabezados);
   const estado: EstadoSheets = { cliente, pestanas, filas: new Map(), vistasCeldas: 0 };
   ESTADO.set(db, estado);
 
@@ -200,13 +236,14 @@ export async function hidratar(db: DB, cliente: ClienteSheets): Promise<void> {
       estado.filas.set(def.tabla, mapa);
       const tabla = TABLA_DRIZZLE[def.tabla];
       for (const pestana of def.pestanas) {
-        const info = pestanas.get(pestana)!;
+        const info = pestanas.get(pestana);
+        if (!info) throw new Error(`Falta la pestaña "${pestana}" en el Google Sheet.`);
         const filas = datos.get(pestana) ?? [];
         info.ultimaFila = Math.max(1, filas.length);
         for (let i = 1; i < filas.length; i++) {
           const celdas = filas[i] ?? [];
           const crudo: Registro = {};
-          for (const col of def.columnas) crudo[col.campo] = deCelda(col, celdas[info.columnas.get(col.campo)!] ?? "");
+          for (const col of def.columnas) crudo[col.campo] = deCelda(col, celdas[columnaDe(info, col.campo)] ?? "");
           if (vacio(crudo, def)) continue;
           const registro = normalizarRegistro(def, pestana, crudo);
           const clave = registro[def.clave];
@@ -280,6 +317,20 @@ function instalarTriggers(db: DB) {
 
 // ------------------------------------------------------------------ volcar
 
+/** Info de una pestaña ya asegurada; si faltara, el error dice cuál (en vez de "undefined"). */
+function infoDe(est: EstadoSheets, pestana: string): InfoPestana {
+  const i = est.pestanas.get(pestana);
+  if (!i) throw new Error(`Falta la pestaña "${pestana}" en el Google Sheet (no estaba al leerlo).`);
+  return i;
+}
+
+/** Índice de la columna de un campo; si faltara, el error dice cuál. */
+function columnaDe(info: InfoPestana, campo: string): number {
+  const idx = info.columnas.get(campo);
+  if (idx === undefined) throw new Error(`Falta la columna del campo "${campo}" en la pestaña "${info.props.title}".`);
+  return idx;
+}
+
 /** Pestaña donde debe vivir una vacante según su estado. */
 export function pestanaDeVacante(v: Registro): string {
   if (v.enTablero === 1) return PESTANA_SEGUIMIENTO;
@@ -324,10 +375,10 @@ export async function volcar(db: DB): Promise<{ celdas: number; nuevas: number; 
     const destino = actual ? (tabla === "vacantes" ? pestanaDeVacante(actual) : def.pestanas[0]) : null;
 
     if (actual && previo && previo.pestana === destino) {
-      const info = est.pestanas.get(destino)!;
+      const info = infoDe(est, destino);
       for (const col of def.columnas) {
         const nuevo = aCelda(col, actual[col.campo]);
-        if (nuevo !== aCelda(col, previo.valores[col.campo])) celda(destino, previo.fila, info.columnas.get(col.campo)!, col, nuevo);
+        if (nuevo !== aCelda(col, previo.valores[col.campo])) celda(destino, previo.fila, columnaDe(info, col.campo), col, nuevo);
       }
       previo.valores = actual;
       continue;
@@ -343,7 +394,7 @@ export async function volcar(db: DB): Promise<{ celdas: number; nuevas: number; 
   const estructura: unknown[] = [];
   let nNuevas = 0;
   for (const [pestana, lista] of nuevasPorPestana) {
-    const info = est.pestanas.get(pestana)!;
+    const info = infoDe(est, pestana);
     const formulas = await formulasDeFila(est, pestana);
     const capacidad = info.props.gridProperties?.rowCount ?? 1000;
     const necesarias = info.ultimaFila + lista.length;
@@ -355,7 +406,7 @@ export async function volcar(db: DB): Promise<{ celdas: number; nuevas: number; 
       const fila = ++info.ultimaFila;
       for (const col of n.def.columnas) {
         const v = aCelda(col, n.registro[col.campo]);
-        if (v !== "") celda(pestana, fila, info.columnas.get(col.campo)!, col, v);
+        if (v !== "") celda(pestana, fila, columnaDe(info, col.campo), col, v);
       }
       for (const [idx, f] of formulas) usuario.push({ range: ref(pestana, `${colLetra(idx)}${fila}`), values: [[f.replace(/(\$?[A-Z]{1,3})\$?2(?![0-9])/g, `$1${fila}`)]] });
       est.filas.get(n.def.tabla)!.set(n.clave, { pestana, fila, valores: n.registro });
@@ -382,7 +433,7 @@ export async function volcar(db: DB): Promise<{ celdas: number; nuevas: number; 
   const borrados: unknown[] = [];
   let nBorradas = 0;
   for (const [pestana, filas] of borrar) {
-    const info = est.pestanas.get(pestana)!;
+    const info = infoDe(est, pestana);
     const ordenadas = [...new Set(filas)].sort((a, b) => b - a);
     for (const f of ordenadas) {
       borrados.push({ deleteDimension: { range: { sheetId: info.props.sheetId, dimension: "ROWS", startIndex: f - 1, endIndex: f } } });
@@ -400,7 +451,7 @@ export async function volcar(db: DB): Promise<{ celdas: number; nuevas: number; 
 
 /** Columnas de la fila 2 que tienen fórmula y que la app no maneja (se copian a las filas nuevas). */
 async function formulasDeFila(est: EstadoSheets, pestana: string): Promise<[number, string][]> {
-  const info = est.pestanas.get(pestana)!;
+  const info = infoDe(est, pestana);
   if (info.ultimaFila < 2) return [];
   const [fila] = await est.cliente.leer([ref(pestana, "A2:ZZ2")], "FORMULA");
   const usadas = new Set(info.columnas.values());

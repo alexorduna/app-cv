@@ -14,6 +14,18 @@ export function rutaBaseDatos(): string {
   return path.isAbsolute(p) ? p : path.join(process.cwd(), p);
 }
 
+/** Carpeta /drizzle con las migraciones (en una función de Netlify el directorio de trabajo cambia). */
+export function carpetaMigraciones(): string {
+  const candidatas = [
+    process.env.CHAMBA_MIGRACIONES,
+    path.join(process.cwd(), "drizzle"),
+    process.env.LAMBDA_TASK_ROOT && path.join(process.env.LAMBDA_TASK_ROOT, "drizzle"),
+  ].filter(Boolean) as string[];
+  const ok = candidatas.find((c) => fs.existsSync(path.join(c, "meta", "_journal.json")));
+  if (!ok) throw new Error(`No encontré las migraciones de la base de datos (busqué en: ${candidatas.join(", ")}).`);
+  return ok;
+}
+
 /** Abre (o crea) una base de datos y aplica las migraciones commiteadas en /drizzle. */
 export function abrirBaseDatos(ruta: string): DB {
   if (ruta !== ":memory:") fs.mkdirSync(path.dirname(ruta), { recursive: true });
@@ -21,7 +33,7 @@ export function abrirBaseDatos(ruta: string): DB {
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
   const db = drizzle(sqlite, { schema }) as DB;
-  migrate(db, { migrationsFolder: path.join(process.cwd(), "drizzle") });
+  migrate(db, { migrationsFolder: carpetaMigraciones() });
   return db;
 }
 

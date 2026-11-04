@@ -19,4 +19,5 @@ export function middleware(req: NextRequest) {
   });
 }
 
-export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"] };
+// /.netlify/functions/* se excluye: esas funciones validan CHAMBA_CLAVE por su cuenta (cabecera x-chamba-clave).
+export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico|\\.netlify/).*)"] };
