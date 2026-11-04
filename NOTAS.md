@@ -67,6 +67,14 @@ Decisiones tomadas eligiendo la opción más simple cuando había dudas. Todas s
 - Autenticación con cuenta de servicio de Google (JWT firmado con `node:crypto`, sin dependencias nuevas). Alternativa considerada: Apps Script (sin Google Cloud); se eligió cuenta de servicio por velocidad.
 - Probado contra un servidor falso de la API de Sheets (tests/sheets-falso.ts) y con un build "standalone" como el de Netlify. No se probó contra Google real ni en Netlify real (falta la llave).
 
+## Búsqueda automática
+
+- GitHub Actions no sirve: la cuenta tiene la facturación bloqueada y el error ("The job was not started because your account is locked due to a billing issue") aparece aunque el repo sea público. El horario del workflow quedó comentado.
+- Opción principal: funciones de Netlify. Una programada (límite 30 s) dispara una de segundo plano (límite 15 min, disponible en el plan Free por créditos). Medido: la búsqueda empaquetada como función tarda ~90 s.
+- La función de segundo plano exige la cabecera `x-chamba-clave` igual a `CHAMBA_CLAVE` (comparación de tiempo constante); el middleware de la contraseña excluye `/.netlify/` porque esas funciones validan por su cuenta.
+- Listas de GitHub sin API: si api.github.com falla, se lee `raw.githubusercontent.com/<repo>/HEAD/...` (HEAD = rama por defecto) y se guarda una huella del contenido (`contenido:...`) en lugar del SHA del commit.
+- Respaldo: timer de systemd en la laptop (`scripts/buscar-local.sh`).
+
 ## Pegar alerta
 
 - Reglas simples: cada enlace de vacante (LinkedIn `/jobs/view/123`, Wellfound `/jobs/…`, Handshake `/jobs/123`) cierra un bloque; de las líneas anteriores se toman puesto, empresa y ubicación, ignorando ruido ("Easy Apply", "3 connections", "Actively recruiting"…). Si no hay enlaces (texto copiado sin hipervínculos), se separa por líneas en blanco.

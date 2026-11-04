@@ -117,7 +117,20 @@ Opcional. En tu laptop la app usa `data/chamba.db`. Si defines `GOOGLE_SHEET_ID`
 
 Para usar el Sheet también desde tu laptop, pon esas mismas variables en `.env` (puedes usar `GOOGLE_SERVICE_ACCOUNT_FILE=/ruta/a/la/llave.json`). La llave nunca va en el repo: `.gitignore` la excluye.
 
-## Búsqueda automática sin GitHub Actions
+## Búsqueda automática en Netlify (recomendada)
+
+Si la app está en Netlify con el Google Sheet como base de datos, Netlify corre la búsqueda solo, gratis, sin tu laptop y sin GitHub Actions:
+
+- `netlify/functions/buscar-programada.mts`: función programada (máx. 30 s) que cada 6 horas (00:17, 06:17, 12:17 y 18:17 UTC) dispara la otra.
+- `netlify/functions/buscar-background.mts`: función de segundo plano (máx. 15 min) que corre la búsqueda y guarda en tu Sheet. Una búsqueda completa tarda ~1.5 min.
+- Está protegida con tu misma `CHAMBA_CLAVE`: no hace falta configurar nada nuevo.
+- En el sitio, **Buscar vacantes → Fuentes → Buscar ahora** dispara la búsqueda cuando quieras.
+- Las listas de GitHub se leen sin la API de GitHub si esta falla (en Netlify falla seguido porque la IP es compartida).
+- Costo en el plan Free (300 créditos/mes): ~80 créditos/mes por la búsqueda (10 créditos por GB-hora). Cada deploy cuesta 15 créditos. Si se acaban, Netlify pausa el sitio hasta el mes siguiente; no cobra.
+
+**Comprobar después de subir el zip:** en Netlify → tu proyecto → **Logs → Functions** deben aparecer `buscar-programada` (con su próxima ejecución) y `buscar-background`. En `buscar-programada` puedes usar **Run now** y luego ver el log de `buscar-background`.
+
+## Búsqueda automática sin GitHub Actions (en tu laptop)
 
 Corre `npm run buscar` en tu laptop cada 6 horas con un timer de systemd (usuario, sin sudo) y guarda en tu Google Sheet. Gratis y sin tarjeta.
 

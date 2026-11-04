@@ -122,13 +122,27 @@ describe("lectura de una lista con SHA (fetch falso)", () => {
     expect(r.candidatas).toHaveLength(5);
   });
 
-  it("respeta el límite de la API de GitHub", async () => {
-    const { fn } = fetchFalso({
-      [`${API}/repos/${repo}/commits/main`]: { status: 403, body: "rate limited", headers: { "x-ratelimit-remaining": "0", "x-ratelimit-reset": "1893456000" } },
-    });
+  it("respeta el límite de la API de GitHub y entonces lee sin API (raw)", async () => {
+    const limitado = { status: 403, body: "rate limited", headers: { "x-ratelimit-remaining": "0", "x-ratelimit-reset": "1893456000" } };
+    // Sin archivos en raw: el error explica ambas cosas
+    const sinNada = fetchFalso({ [`${API}/repos/${repo}/commits/main`]: limitado });
     await expect(
-      leerLista(new ClienteHttp({ fetch: fn, intervaloMinimoMs: 0 }), { repo, rama: "main", formato: "auto", ultimoSha: null }),
-    ).rejects.toThrow(/limitó/);
+      leerLista(new ClienteHttp({ fetch: sinNada.fn, intervaloMinimoMs: 0 }), { repo, rama: "main", formato: "auto", ultimoSha: null }),
+    ).rejects.toThrow(/limitó.*Sin API tampoco/);
+    // Con el README en raw: funciona sin API y usa una huella del contenido
+    const conRaw = fetchFalso({
+      [`${API}/repos/${repo}`]: limitado,
+      [`${RAW}/${repo}/HEAD/README.md`]: fx("README-html.md"),
+    });
+    const http = new ClienteHttp({ fetch: conRaw.fn, intervaloMinimoMs: 0 });
+    const r = await leerLista(http, { repo, rama: "", formato: "auto", ultimoSha: null });
+    expect(r.via).toBe("raw");
+    expect(r.candidatas).toHaveLength(5);
+    expect(r.sha).toMatch(/^contenido:/);
+    expect(conRaw.llamadas.some((u) => u.startsWith(`${RAW}/${repo}/HEAD/`))).toBe(true);
+    // Mismo contenido la siguiente vez: no repite trabajo
+    const otra = await leerLista(http, { repo, rama: "", formato: "auto", ultimoSha: r.sha });
+    expect(otra.sinCambios).toBe(true);
   });
 });
 
