@@ -48,7 +48,7 @@ export default async function PaginaCartas({ searchParams }: { searchParams: Pro
             <>
               <div className="mb-3">
                 <h2 className="text-lg font-semibold">{elegida.puesto}</h2>
-                <div className="subtitulo">{elegida.empresa} · <Link className="enlace" href={`/vacante/${elegida.id}`}>ver vacante</Link> · <Link className="enlace" href="/configuracion#perfil">editar perfil y plantilla</Link></div>
+                <div className="subtitulo">{elegida.empresa} · <Link prefetch={false} className="enlace" href={`/vacante/${elegida.id}`}>ver vacante</Link> · <Link prefetch={false} className="enlace" href="/configuracion#perfil">editar perfil y plantilla</Link></div>
               </div>
               <EditorCarta
                 key={`${elegida.id}-${cartas.length}`}

@@ -49,6 +49,8 @@ interface InfoPestana {
 
 export interface EstadoSheets {
   cliente: ClienteSheets;
+  /** Pestañas que NO se leyeron en esta petición (lectura parcial). Nunca se escribe en ellas. */
+  noCargadas: Set<string>;
   pestanas: Map<string, InfoPestana>;
   /** tabla → clave → fila en el Sheet */
   filas: Map<string, Map<string, FilaSheet>>;
@@ -215,48 +217,74 @@ async function asegurarColumnas(cliente: ClienteSheets, props: Map<string, Propi
 
 // ------------------------------------------------------------------ hidratar
 
-/** Lee todo el Sheet y llena la base en memoria `db` (recién creada y migrada). */
-export async function hidratar(db: DB, cliente: ClienteSheets): Promise<void> {
+type SinId = { def: DefTabla; pestana: string; fila: number; registro: Registro };
+
+/** Pasa las filas de una pestaña a la tabla en memoria y anota en qué fila del Sheet vive cada una. */
+function cargarFilas(tx: DB, est: EstadoSheets, def: DefTabla, pestana: string, filas: string[][], sinId: SinId[] | null): string[] {
+  const info = infoDe(est, pestana);
+  const mapa = est.filas.get(def.tabla)!;
+  const tabla = TABLA_DRIZZLE[def.tabla];
+  const insertadas: string[] = [];
+  info.ultimaFila = Math.max(1, filas.length);
+  for (let i = 1; i < filas.length; i++) {
+    const celdas = filas[i] ?? [];
+    const crudo: Registro = {};
+    for (const col of def.columnas) crudo[col.campo] = deCelda(col, celdas[columnaDe(info, col.campo)] ?? "");
+    if (vacio(crudo, def)) continue;
+    const registro = normalizarRegistro(def, pestana, crudo);
+    const clave = registro[def.clave];
+    const claveVacia = clave === null || clave === undefined || clave === "";
+    if (claveVacia || mapa.has(String(clave))) {
+      // Fila sin ID (agregada a mano) o con ID repetido: se le asigna uno nuevo al final.
+      if (def.clave === "id" && sinId) sinId.push({ def, pestana, fila: i + 1, registro });
+      continue;
+    }
+    const res = tx.insert(tabla).values(registro as never).onConflictDoNothing().run();
+    if (res.changes === 0) continue; // duplicado (p. ej. misma pregunta dos veces en el banco)
+    mapa.set(String(clave), { pestana, fila: i + 1, valores: leerFila(tx, def, String(clave)) ?? registro });
+    insertadas.push(String(clave));
+  }
+  return insertadas;
+}
+
+function cargarVistas(db: DB, est: EstadoSheets, filas: string[][]) {
+  const celdas = filas.map((f) => f[0] ?? "");
+  est.vistasCeldas = celdas.length;
+  const huellas = celdas.flatMap((c) => c.split(",")).filter(Boolean);
+  if (!huellas.length) return;
+  const ins = db.$client.prepare(`INSERT OR IGNORE INTO huellas_vistas (huella) VALUES (?)`);
+  db.$client.transaction(() => {
+    for (const h of huellas) ins.run(h);
+  })();
+}
+
+export interface OpcionesHidratar {
+  /** Pestañas que no se leen (solo su encabezado). Se pueden cargar después con cargarPestanas(). */
+  omitir?: string[];
+}
+
+/** Lee el Sheet y llena la base en memoria `db` (recién creada y migrada). */
+export async function hidratar(db: DB, cliente: ClienteSheets, opciones: OpcionesHidratar = {}): Promise<void> {
+  const omitir = new Set(opciones.omitir ?? []);
   // 1) Primero la estructura: así se leen los datos de TODAS las pestañas, incluso las que creó otra petición.
   const props = await asegurarPestanas(cliente);
   const nombres = pestanasRequeridas().map(([n]) => n);
-  const leidos = await cliente.leer(nombres.map((n) => ref(n, "A1:ZZ")));
+  // De las omitidas solo se lee la fila de encabezados (para conocer sus columnas).
+  const leidos = await cliente.leer(nombres.map((n) => ref(n, omitir.has(n) ? "A1:ZZ1" : "A1:ZZ")));
   const datos = new Map<string, string[][]>();
   nombres.forEach((n, i) => datos.set(n, (leidos[i]?.values ?? []) as string[][]));
   const encabezados = new Map([...datos].map(([n, filas]) => [n, filas[0] ?? []]));
   const pestanas = await asegurarColumnas(cliente, props, encabezados);
-  const estado: EstadoSheets = { cliente, pestanas, filas: new Map(), vistasCeldas: 0 };
+  const estado: EstadoSheets = { cliente, pestanas, noCargadas: new Set(omitir), filas: new Map(), vistasCeldas: 0 };
   ESTADO.set(db, estado);
+  for (const def of TABLAS) estado.filas.set(def.tabla, new Map());
 
-  const sinId: { def: DefTabla; pestana: string; fila: number; registro: Registro }[] = [];
-
+  const sinId: SinId[] = [];
   db.transaction((tx) => {
     for (const def of TABLAS) {
-      const mapa = new Map<string, FilaSheet>();
-      estado.filas.set(def.tabla, mapa);
-      const tabla = TABLA_DRIZZLE[def.tabla];
       for (const pestana of def.pestanas) {
-        const info = pestanas.get(pestana);
-        if (!info) throw new Error(`Falta la pestaña "${pestana}" en el Google Sheet.`);
-        const filas = datos.get(pestana) ?? [];
-        info.ultimaFila = Math.max(1, filas.length);
-        for (let i = 1; i < filas.length; i++) {
-          const celdas = filas[i] ?? [];
-          const crudo: Registro = {};
-          for (const col of def.columnas) crudo[col.campo] = deCelda(col, celdas[columnaDe(info, col.campo)] ?? "");
-          if (vacio(crudo, def)) continue;
-          const registro = normalizarRegistro(def, pestana, crudo);
-          const clave = registro[def.clave];
-          const claveVacia = clave === null || clave === undefined || clave === "";
-          if (claveVacia || mapa.has(String(clave))) {
-            // Fila sin ID (agregada a mano) o con ID repetido: se le asigna uno nuevo al final.
-            if (def.clave === "id") sinId.push({ def, pestana, fila: i + 1, registro });
-            continue;
-          }
-          const res = tx.insert(tabla).values(registro as never).onConflictDoNothing().run();
-          if (res.changes === 0) continue; // duplicado (p. ej. misma pregunta dos veces en el banco)
-          mapa.set(String(clave), { pestana, fila: i + 1, valores: leerFila(tx as unknown as DB, def, String(clave)) ?? registro });
-        }
+        if (omitir.has(pestana)) continue;
+        cargarFilas(tx as unknown as DB, estado, def, pestana, datos.get(pestana) ?? [], sinId);
       }
     }
   });
@@ -272,14 +300,7 @@ export async function hidratar(db: DB, cliente: ClienteSheets): Promise<void> {
   }
 
   // Huellas vistas: celdas de la columna A con huellas separadas por comas.
-  const vistas = (datos.get(PESTANA_VISTAS) ?? []).map((f) => f[0] ?? "");
-  estado.vistasCeldas = vistas.length;
-  const huellas = vistas.flatMap((c) => c.split(",")).filter(Boolean);
-  if (huellas.length) {
-    db.transaction((tx) => {
-      for (const h of huellas) tx.insert(schema.huellasVistas).values({ huella: h }).onConflictDoNothing().run();
-    });
-  }
+  if (!omitir.has(PESTANA_VISTAS)) cargarVistas(db, estado, datos.get(PESTANA_VISTAS) ?? []);
   instalarTriggers(db);
   // Las filas que no tenían ID en el Sheet cuentan como cambiadas, para escribirles su ID nuevo.
   const marcar = db.$client.prepare(`INSERT OR IGNORE INTO _cambios VALUES (?, ?)`);
@@ -287,6 +308,33 @@ export async function hidratar(db: DB, cliente: ClienteSheets): Promise<void> {
     const def = TABLAS.find((d) => d.tabla === tabla)!;
     for (const [clave, f] of mapa) if (f.valores[def.clave] === null) marcar.run(tabla, clave);
   }
+}
+
+/**
+ * Carga después pestañas que se omitieron al hidratar (p. ej. _Descartadas en la pantalla de historial).
+ * No cuenta como cambio: no se reescribe nada en el Sheet.
+ */
+export async function cargarPestanas(db: DB, nombres: string[]): Promise<void> {
+  const est = ESTADO.get(db);
+  if (!est) return;
+  const faltan = nombres.filter((n) => est.noCargadas.has(n));
+  if (!faltan.length) return;
+  const leidos = await est.cliente.leer(faltan.map((n) => ref(n, "A1:ZZ")));
+  const borrarCambio = db.$client.prepare(`DELETE FROM _cambios WHERE tabla = ? AND clave = ?`);
+  faltan.forEach((nombre, i) => {
+    const filas = (leidos[i]?.values ?? []) as string[][];
+    if (nombre === PESTANA_VISTAS) {
+      cargarVistas(db, est, filas);
+      db.$client.exec(`DELETE FROM _vistas_cambiadas`);
+    } else {
+      const def = TABLAS.find((d) => d.pestanas.includes(nombre))!;
+      db.transaction((tx) => {
+        // Sin asignar IDs nuevos aquí (eso escribiría): las filas sin ID se ignoran en la carga diferida.
+        for (const clave of cargarFilas(tx as unknown as DB, est, def, nombre, filas, null)) borrarCambio.run(def.tabla, clave);
+      });
+    }
+    est.noCargadas.delete(nombre);
+  });
 }
 
 function leerFila(db: DB, def: DefTabla, clave: string): Registro | undefined {
@@ -367,12 +415,18 @@ export async function volcar(db: DB): Promise<{ celdas: number; nuevas: number; 
     destino.push({ range: ref(pestana, `${colLetra(idx)}${fila}`), values: [[valor]] });
   };
 
+  if (vistasCambiadas && est.noCargadas.has(PESTANA_VISTAS)) {
+    throw new Error(`Error interno: se intentó guardar huellas en "${PESTANA_VISTAS}" sin haberla leído (se perderían las anteriores). No se escribió nada.`);
+  }
   for (const { tabla, clave } of cambios) {
     const def = TABLAS.find((d) => d.tabla === tabla);
     if (!def) continue;
     const actual = leerFila(db, def, clave);
     const previo = est.filas.get(tabla)!.get(clave);
     const destino = actual ? (tabla === "vacantes" ? pestanaDeVacante(actual) : def.pestanas[0]) : null;
+    if (destino && est.noCargadas.has(destino)) {
+      throw new Error(`Error interno: se intentó escribir en "${destino}" sin haberla leído. No se escribió nada.`);
+    }
 
     if (actual && previo && previo.pestana === destino) {
       const info = infoDe(est, destino);

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import "./globals.css";
 import { Navegacion } from "@/components/Navegacion";
 import { BotonTema, scriptTema } from "@/components/Tema";
@@ -12,9 +13,13 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const db = await leerDb();
-  const nuevas = listarNuevas(db).length;
+/** Contador de la bandeja Nuevas: llega aparte, así el resto de la página no espera al Sheet. */
+async function ContadorNuevas() {
+  const nuevas = listarNuevas(await leerDb()).length;
+  return nuevas > 0 ? <span className="rounded-full bg-emerald-600 px-1.5 text-xs font-semibold text-white">{nuevas}</span> : null;
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
@@ -27,7 +32,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <div className="text-lg font-bold tracking-tight">Chamba</div>
               <div className="text-xs text-zinc-500">Tú das el último clic.</div>
             </div>
-            <Navegacion nuevas={nuevas} />
+            <Navegacion contadorNuevas={<Suspense fallback={null}><ContadorNuevas /></Suspense>} />
             <div className="mt-auto flex flex-col gap-2 px-1">
               <a href="/api/exportar?tipo=seguimiento" className="btn-sec btn-chico w-full">Exportar CSV</a>
               <BotonTema />

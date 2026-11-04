@@ -26,7 +26,7 @@ export function Historial({ filas }: { filas: Fila[] }) {
               <tr key={f.id} className="border-b border-zinc-100 align-top last:border-0 dark:border-zinc-800">
                 <td className="whitespace-nowrap px-3 py-2 text-xs text-zinc-500">{f.fechaDescarte ?? ""}</td>
                 <td className="py-2 pr-2">
-                  <Link href={`/vacante/${f.id}`} className="font-medium hover:underline">{f.puesto}</Link>
+                  <Link prefetch={false} href={`/vacante/${f.id}`} className="font-medium hover:underline">{f.puesto}</Link>
                   <div className="text-xs text-zinc-500">
                     <TextoArea area={f.area} /> · {f.empresa} · {f.plataforma}{f.fechaAplicacion ? ` · aplicaste el ${f.fechaAplicacion}` : ""}
                   </div>

@@ -67,6 +67,13 @@ Decisiones tomadas eligiendo la opción más simple cuando había dudas. Todas s
 - Autenticación con cuenta de servicio de Google (JWT firmado con `node:crypto`, sin dependencias nuevas). Alternativa considerada: Apps Script (sin Google Cloud); se eligió cuenta de servicio por velocidad.
 - Probado contra un servidor falso de la API de Sheets (tests/sheets-falso.ts) y con un build "standalone" como el de Netlify. No se probó contra Google real ni en Netlify real (falta la llave).
 
+## Velocidad (modo Sheet)
+
+- Las pantallas leen el Sheet en modo "lectura": sin `_Vistas` (~1.6 MB de huellas), `_Descartadas` ni `_Actividad`, que solo usan la búsqueda, Historial, la pestaña Descartadas y el detalle (se cargan con `cargarExtra`). Medido con tamaños reales: de ~2.2 MB a ~76 KB por pantalla.
+- Acciones normales leen todo menos `_Vistas`; búsqueda, alertas y enlaces leen todo. Si algo intentara guardar en una pestaña que no se leyó, `volcar()` se detiene antes de escribir (prueba en tests/sheets-modos.test.ts).
+- El layout ya no espera al Sheet (el contador de Nuevas llega aparte) y `app/loading.tsx` muestra un esqueleto al instante.
+- Los enlaces de cada vacante en listas no se precargan (`prefetch={false}`); el menú sí, porque con loading.tsx solo precarga el esqueleto.
+
 ## Búsqueda automática
 
 - GitHub Actions no sirve: la cuenta tiene la facturación bloqueada y el error ("The job was not started because your account is locked due to a billing issue") aparece aunque el repo sea público. El horario del workflow quedó comentado.

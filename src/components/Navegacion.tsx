@@ -12,7 +12,7 @@ const ENLACES = [
   { href: "/configuracion", texto: "Configuración" },
 ];
 
-export function Navegacion({ nuevas }: { nuevas: number }) {
+export function Navegacion({ contadorNuevas }: { contadorNuevas: React.ReactNode }) {
   const ruta = usePathname();
   return (
     <nav className="flex flex-col gap-0.5">
@@ -29,9 +29,7 @@ export function Navegacion({ nuevas }: { nuevas: number }) {
             }`}
           >
             {e.texto}
-            {e.href === "/buscar" && nuevas > 0 && (
-              <span className="rounded-full bg-emerald-600 px-1.5 text-xs font-semibold text-white">{nuevas}</span>
-            )}
+            {e.href === "/buscar" && contadorNuevas}
           </Link>
         );
       })}
