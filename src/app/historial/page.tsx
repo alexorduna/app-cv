@@ -1,4 +1,5 @@
 import { leerDb } from "@/db/servidor";
+import { cargarExtra } from "@/db/almacen";
 import { Historial } from "@/components/Historial";
 import { listarHistorialDescartes } from "@/lib/vacantes";
 
@@ -6,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function PaginaHistorial() {
   const db = await leerDb();
+  await cargarExtra(db, "descartadas");
   const filas = listarHistorialDescartes(db);
   return (
     <div className="flex max-w-5xl flex-col gap-4">

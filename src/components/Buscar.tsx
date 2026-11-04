@@ -90,7 +90,7 @@ export function BandejaNuevas({ nuevas }: { nuevas: FilaNueva[] }) {
                 <td className="w-8 px-2 py-2"><input type="checkbox" checked={sel.includes(n.id)} onChange={() => setSel((s) => (s.includes(n.id) ? s.filter((x) => x !== n.id) : [...s, n.id]))} /></td>
                 <td className="w-20 py-2"><Prioridad p={n.prioridad} /><br /><TextoArea area={n.area} /></td>
                 <td className="py-2 pr-2">
-                  <Link href={`/vacante/${n.id}`} className="font-medium hover:underline">{n.puesto}</Link>
+                  <Link prefetch={false} href={`/vacante/${n.id}`} className="font-medium hover:underline">{n.puesto}</Link>
                   <div className="text-xs text-zinc-500">{n.empresa} · {n.ubicacion || n.region} · {n.tipo}{n.salario ? ` · ${n.salario}` : ""}</div>
                   {n.notas && <div className="mt-1 whitespace-pre-line text-xs text-amber-700 dark:text-amber-400">{n.notas}</div>}
                 </td>

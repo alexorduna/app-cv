@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, desc, eq } from "drizzle-orm";
 import { leerDb } from "@/db/servidor";
+import { cargarExtra } from "@/db/almacen";
 import { AREAS, TIPOS, actividad } from "@/db/schema";
 import { guardarVacanteAccion } from "@/app/acciones";
 import { AccionesVacante } from "@/components/AccionesVacante";
@@ -16,6 +17,8 @@ export const dynamic = "force-dynamic";
 export default async function PaginaVacante({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const db = await leerDb();
+  // La vacante puede estar entre las descartadas, y aquí se muestra su historial.
+  await cargarExtra(db, "descartadas", "actividad");
   const v = obtenerVacante(db, Number(id));
   if (!v) notFound();
   const ats = detectarAts(v.enlace);

@@ -30,7 +30,7 @@ function refrescar() {
 // ---------- Vacantes ----------
 
 export async function cambiarEstadoAccion(id: number, estado: Estado, motivo?: string) {
-  const db = await obtenerDb();
+  const db = await obtenerDb("escritura");
   if (!ESTADOS.includes(estado)) throw new Error("Estado inválido");
   cambiarEstado(db, id, estado, { motivo });
   await guardar(db);
@@ -38,14 +38,14 @@ export async function cambiarEstadoAccion(id: number, estado: Estado, motivo?: s
 }
 
 export async function marcarAplicadaAccion(id: number) {
-  const db = await obtenerDb();
+  const db = await obtenerDb("escritura");
   cambiarEstado(db, id, "Aplicada", { fecha: hoyISO() });
   await guardar(db);
   refrescar();
 }
 
 export async function guardarVacanteAccion(id: number, formData: FormData) {
-  const db = await obtenerDb();
+  const db = await obtenerDb("escritura");
   const campos: Record<string, string | number | null> = {};
   for (const k of ["empresa", "puesto", "area", "plataforma", "region", "tipo", "horasPorDia", "salario", "enlace", "siguientePaso", "versionCv", "notas", "motivoDescarte"]) {
     const v = formData.get(k);
@@ -63,28 +63,28 @@ export async function guardarVacanteAccion(id: number, formData: FormData) {
 }
 
 export async function aceptarNuevasAccion(ids: number[]) {
-  const db = await obtenerDb();
+  const db = await obtenerDb("escritura");
   aceptarNuevas(db, ids);
   await guardar(db);
   refrescar();
 }
 
 export async function descartarNuevasAccion(ids: number[], motivo: string) {
-  const db = await obtenerDb();
+  const db = await obtenerDb("escritura");
   descartarVarias(db, ids, motivo || "Descartada en lote desde Nuevas");
   await guardar(db);
   refrescar();
 }
 
 export async function rescatarAccion(id: number) {
-  const db = await obtenerDb();
+  const db = await obtenerDb("escritura");
   rescatarDescartada(db, id);
   await guardar(db);
   refrescar();
 }
 
 export async function restaurarAccion(id: number) {
-  const db = await obtenerDb();
+  const db = await obtenerDb("escritura");
   restaurarDescartada(db, id);
   await guardar(db);
   refrescar();
@@ -117,7 +117,7 @@ export async function dispararBusquedaEnLineaAccion(): Promise<{ ok: boolean; me
 }
 
 export async function buscarAhoraAccion(soloFuente?: string): Promise<ResultadoFuente[]> {
-  const db = await obtenerDb();
+  const db = await obtenerDb("ingesta");
   const r = await buscarVacantes(db, soloFuente ? { soloFuentes: [soloFuente] } : {});
   await guardar(db);
   refrescar();
@@ -125,7 +125,7 @@ export async function buscarAhoraAccion(soloFuente?: string): Promise<ResultadoF
 }
 
 export async function previsualizarAlertaAccion(texto: string) {
-  const db = await obtenerDb();
+  const db = await obtenerDb("lectura");
   const { plataforma, vacantes } = extraerVacantesDeAlerta(texto);
   const cfg = leerConfigFiltros(db);
   return {
@@ -138,7 +138,7 @@ export async function previsualizarAlertaAccion(texto: string) {
 }
 
 export async function ingresarAlertaAccion(texto: string) {
-  const db = await obtenerDb();
+  const db = await obtenerDb("ingesta");
   const { plataforma, vacantes } = extraerVacantesDeAlerta(texto);
   const r = ingresarLote(db, vacantes, `${plataforma} (alerta)`, leerConfigFiltros(db));
   await guardar(db);
@@ -147,7 +147,7 @@ export async function ingresarAlertaAccion(texto: string) {
 }
 
 export async function pegarEnlaceAccion(formData: FormData) {
-  const db = await obtenerDb();
+  const db = await obtenerDb("ingesta");
   const enlace = String(formData.get("enlace") ?? "").trim();
   const puesto = String(formData.get("puesto") ?? "").trim();
   const empresa = String(formData.get("empresa") ?? "").trim();
@@ -178,7 +178,7 @@ export async function pegarEnlaceAccion(formData: FormData) {
 // ---------- Cartas ----------
 
 export async function generarCartaAccion(vacanteId: number): Promise<{ error?: string }> {
-  const db = await obtenerDb();
+  const db = await obtenerDb("escritura");
   try {
     await generarBorrador(db, vacanteId);
     await guardar(db);
@@ -190,14 +190,14 @@ export async function generarCartaAccion(vacanteId: number): Promise<{ error?: s
 }
 
 export async function guardarCartaAccion(id: number, texto: string) {
-  const db = await obtenerDb();
+  const db = await obtenerDb("escritura");
   editarCarta(db, id, texto);
   await guardar(db);
   refrescar();
 }
 
 export async function aprobarCartaAccion(id: number, texto: string): Promise<Revision> {
-  const db = await obtenerDb();
+  const db = await obtenerDb("escritura");
   editarCarta(db, id, texto);
   const r = aprobarCarta(db, id);
   await guardar(db);
@@ -208,7 +208,7 @@ export async function aprobarCartaAccion(id: number, texto: string): Promise<Rev
 // ---------- Banco de respuestas ----------
 
 export async function guardarRespuestaAccion(formData: FormData) {
-  const db = await obtenerDb();
+  const db = await obtenerDb("escritura");
   const id = Number(formData.get("id") || 0);
   const pregunta = String(formData.get("pregunta") ?? "").trim();
   const categoria = String(formData.get("categoria") ?? "").trim();
@@ -229,7 +229,7 @@ export async function guardarRespuestaAccion(formData: FormData) {
 }
 
 export async function borrarRespuestaAccion(id: number) {
-  const db = await obtenerDb();
+  const db = await obtenerDb("escritura");
   db.delete(bancoRespuestas).where(eq(bancoRespuestas.id, id)).run();
   await guardar(db);
   refrescar();
@@ -240,7 +240,7 @@ export async function borrarRespuestaAccion(id: number) {
 const CLAVES_EDITABLES = new Set(Object.keys(FILTROS_SEMILLA));
 
 export async function guardarFiltrosAccion(formData: FormData) {
-  const db = await obtenerDb();
+  const db = await obtenerDb("escritura");
   for (const [k, v] of formData.entries()) {
     if (!CLAVES_EDITABLES.has(k) || typeof v !== "string") continue;
     if (/salari|sueldo/i.test(k)) continue;
@@ -258,14 +258,14 @@ export async function guardarFiltrosAccion(formData: FormData) {
 }
 
 export async function restaurarFiltroAccion(clave: string) {
-  const db = await obtenerDb();
+  const db = await obtenerDb("escritura");
   if (CLAVES_EDITABLES.has(clave)) guardarFiltro(db, clave, FILTROS_SEMILLA[clave]);
   await guardar(db);
   refrescar();
 }
 
 export async function agregarListaAccion(formData: FormData): Promise<{ error?: string }> {
-  const db = await obtenerDb();
+  const db = await obtenerDb("escritura");
   const repo = normalizarRepo(String(formData.get("repo") ?? ""));
   if (!repo) return { error: "Escribe el repo como owner/nombre o https://github.com/owner/nombre" };
   const rama = String(formData.get("rama") ?? "").trim();
@@ -277,7 +277,7 @@ export async function agregarListaAccion(formData: FormData): Promise<{ error?: 
 }
 
 export async function actualizarListaAccion(id: number, cambios: { rama?: string; formato?: string; activa?: number; reiniciarSha?: boolean }) {
-  const db = await obtenerDb();
+  const db = await obtenerDb("escritura");
   const set: Record<string, unknown> = {};
   if (cambios.rama !== undefined) set.rama = cambios.rama.trim();
   if (cambios.formato !== undefined) set.formato = cambios.formato === "enlaces" ? "enlaces" : "auto";
@@ -290,7 +290,7 @@ export async function actualizarListaAccion(id: number, cambios: { rama?: string
 }
 
 export async function borrarListaAccion(id: number) {
-  const db = await obtenerDb();
+  const db = await obtenerDb("escritura");
   db.delete(listasGithub).where(eq(listasGithub.id, id)).run();
   await guardar(db);
   refrescar();

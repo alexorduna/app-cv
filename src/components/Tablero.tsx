@@ -148,7 +148,7 @@ export function Tablero({ filas }: { filas: Fila[] }) {
                 <tr key={f.id} className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40">
                   <td className="px-2 py-1.5"><Prioridad p={f.prioridad} /></td>
                   <td className="px-2 py-1.5 font-medium">{f.empresa}</td>
-                  <td className="px-2 py-1.5"><Link className="enlace" href={`/vacante/${f.id}`}>{f.puesto}</Link></td>
+                  <td className="px-2 py-1.5"><Link prefetch={false} className="enlace" href={`/vacante/${f.id}`}>{f.puesto}</Link></td>
                   <td className="px-2 py-1.5"><TextoArea area={f.area} /></td>
                   <td className="px-2 py-1.5 text-xs">{f.region}</td>
                   <td className="px-2 py-1.5 text-xs">{f.tipo}</td>
@@ -176,7 +176,7 @@ export function Tablero({ filas }: { filas: Fila[] }) {
                 {col.map((f) => (
                   <div key={f.id} className="tarjeta flex flex-col gap-1.5 p-2.5">
                     <div className="flex items-center justify-between"><TextoArea area={f.area} /><Prioridad p={f.prioridad} /></div>
-                    <Link href={`/vacante/${f.id}`} className="text-sm font-medium leading-snug hover:underline">{f.puesto}</Link>
+                    <Link prefetch={false} href={`/vacante/${f.id}`} className="text-sm font-medium leading-snug hover:underline">{f.puesto}</Link>
                     <div className="text-xs text-zinc-500">{f.empresa} · {f.region}</div>
                     <SelectorEstado id={f.id} estado={f.estado} />
                   </div>
